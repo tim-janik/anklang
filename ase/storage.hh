@@ -15,7 +15,7 @@ public:
   Error    open_for_writing   (const String &filename);
   Error    open_with_mimetype (const String &filename, const String &mimetype);
   Error    store_file_data    (const String &filename, const String &buffer);
-  Error    store_file         (const String &filename, const String &ondiskpath, bool maycompress = true);
+  Error    store_file         (const String &filename, const String &ondiskpath, bool maycompress = true, bool follow_links = false);
   Error    close              ();
   Error    remove_opened      ();
 };
@@ -32,6 +32,7 @@ public:
   bool     has_file           (const String &filename);
   StringS  list_files         ();
   String   stringread         (const String &filename, ssize_t maxlength = -1);
+  String   read_link          (const String &filename);
   Error    close              ();
 };
 

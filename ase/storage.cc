@@ -232,9 +232,7 @@ public:
     writer = mz_zip_writer_create();
     mz_zip_writer_set_zip_cd (writer, false);
     mz_zip_writer_set_password (writer, nullptr);
-    mz_zip_writer_set_store_links (writer, false);
-    mz_zip_writer_set_follow_links (writer, true);
-    mz_zip_writer_set_compress_level (writer, MZ_COMPRESS_LEVEL_BEST);
+    mz_zip_writer_set_compress_level (writer, MZ_COMPRESS_LEVEL_BEST); // Passed directly to zstd as level 9.
     mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_ZSTD);
     int mzerr = mz_zip_writer_open_file (writer, zipname.c_str(), 0, false);
     if (mzerr != MZ_OK)
@@ -279,9 +277,11 @@ public:
     return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
   }
   Error
-  store_file (const String &filename, const String &ondiskpath, bool maycompress)
+  store_file (const String &filename, const String &ondiskpath, bool maycompress, bool follow_links)
   {
     assert_return (mz_zip_writer_is_open (writer) == MZ_OK, Error::INTERNAL);
+    mz_zip_writer_set_store_links (writer, !follow_links);
+    mz_zip_writer_set_follow_links (writer, follow_links);
     if (maycompress)
       maycompress = !is_compressed (Path::stringread (ondiskpath, 1024));
     if (!maycompress)
@@ -330,10 +330,10 @@ StorageWriter::store_file_data (const String &filename, const String &buffer)
 }
 
 Error
-StorageWriter::store_file (const String &filename, const String &ondiskpath, bool maycompress)
+StorageWriter::store_file (const String &filename, const String &ondiskpath, bool maycompress, bool follow_links)
 {
   assert_return (impl_, Error::INTERNAL);
-  return impl_->store_file (filename, ondiskpath, maycompress);
+  return impl_->store_file (filename, ondiskpath, maycompress, follow_links);
 }
 
 Error
@@ -423,6 +423,20 @@ public:
     return MZ_OK == mz_zip_reader_locate_entry (reader, fname.c_str(), false);
   }
   String
+  read_link (const String &filename)
+  {
+    errno = EINVAL;
+    assert_return (mz_zip_reader_is_open (reader) == MZ_OK, {});
+    const String fname = Path::normalize (filename);
+    if (MZ_OK != mz_zip_reader_locate_entry (reader, fname.c_str(), false))
+      return_with_errno (ENOENT, {});
+    mz_zip_file *info = nullptr;
+    if (MZ_OK != mz_zip_reader_entry_get_info (reader, &info) || !info->linkname || !*info->linkname)
+      return_with_errno (EINVAL, {});
+    errno = 0;
+    return info->linkname;
+  }
+  String
   stringread (const String &filename)
   {
     errno = EINVAL;
@@ -488,6 +502,13 @@ StorageReader::stringread (const String &filename, ssize_t maxlength)
   if (maxlength >= 0 && maxlength < int64_t (data.size()))
     data.resize (maxlength);
   return data;
+}
+
+String
+StorageReader::read_link (const String &filename)
+{
+  assert_return (impl_, {});
+  return impl_->read_link (filename);
 }
 
 void

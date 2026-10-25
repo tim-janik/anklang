@@ -5,6 +5,7 @@
 #include <ase/compress.hh>
 #include <ase/minizip.h>
 #include <ase/testing.hh>
+#include <unistd.h>
 
 namespace {
 using namespace Ase;
@@ -91,5 +92,49 @@ storage_roundtrip()
   anklang_cachedir_cleanup (dir);
 }
 TEST_ADD (storage_roundtrip);
+
+static void
+storage_links()
+{
+  const String dir = anklang_cachedir_create();
+  TASSERT (!dir.empty());
+  const String archive = Path::join (dir, "links.anklang");
+  const String target = Path::join (dir, "target");
+  const String absolute_link = Path::join (dir, "absolute");
+  const String relative_link = Path::join (dir, "relative");
+  const String missing_link = Path::join (dir, "missing");
+  const String text = "linked file data\n";
+  TASSERT (Path::stringwrite (target, text));
+  TASSERT (symlink (target.c_str(), absolute_link.c_str()) == 0);
+  TASSERT (symlink ("target", relative_link.c_str()) == 0);
+  TASSERT (symlink ("absent", missing_link.c_str()) == 0);
+
+  StorageWriter writer;
+  TASSERT (writer.open_with_mimetype (archive, "application/x-anklang") == Error::NONE);
+  TASSERT (writer.store_file ("absolute", absolute_link) == Error::NONE);
+  TASSERT (writer.store_file ("relative", relative_link) == Error::NONE);
+  TASSERT (writer.store_file ("embedded", absolute_link, true, true) == Error::NONE);
+  TASSERT (writer.store_file ("missing", missing_link) == Error::NONE);
+  TASSERT (writer.close() == Error::NONE);
+
+  TASSERT (unlink (target.c_str()) == 0);
+  StorageReader reader;
+  TASSERT (reader.open_for_reading (archive) == Error::NONE);
+  TCMP (reader.read_link ("absolute"), ==, target);
+  TCMP (reader.read_link ("relative"), ==, "target");
+  TCMP (reader.read_link ("missing"), ==, "absent");
+  TCMP (reader.read_link ("embedded"), ==, "");
+  TASSERT (errno == EINVAL);
+  TCMP (reader.read_link ("absent"), ==, "");
+  TASSERT (errno == ENOENT);
+  TCMP (reader.stringread ("embedded"), ==, text);
+  TASSERT (reader.close() == Error::NONE);
+  TCMP (zip_method (archive, "embedded"), ==, 93);
+  TASSERT (writer.open_for_writing (archive) == Error::NONE);
+  TASSERT (writer.store_file ("missing", missing_link, true, true) != Error::NONE);
+  TASSERT (writer.remove_opened() == Error::NONE);
+  anklang_cachedir_cleanup (dir);
+}
+TEST_ADD (storage_links);
 
 }
