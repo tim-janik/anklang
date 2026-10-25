@@ -9,7 +9,7 @@
  * : The *Ase.Project* containing playback tracks.
  */
 
-import { createSignal, onMount, onCleanup, For, splitProps } from 'solid-js';
+import { onMount, For, splitProps } from 'solid-js';
 import { ClipList } from './cliplist';
 import { PartList } from './partlist.tsx';
 import { TrackView } from './trackview.tsx';
@@ -70,19 +70,10 @@ export function TrackList (props)
   // App rebuilds this component on project changes; only changes to this project's track list need watching.
   const [local, rest] = splitProps (props, ['class', 'project', 'onDblClick']);
   const project = local.project;
-  const [tracks, set_tracks] = createSignal ([]);
+  const tracks = () => project?.all_tracks ?? [];
   let trackviews_ref;
   let cliplists_ref;
   let partlists_ref;
-
-  const fetch_tracks = async () => {
-    const list = await project.all_tracks ();
-    set_tracks (list || []);
-  };
-  if (project) {
-    fetch_tracks();
-    onCleanup (project.on ("notify:all_tracks", fetch_tracks));
-  }
 
   // Setup scroll sync after DOM is ready
   onMount (() => {

@@ -137,11 +137,35 @@ TEST_ADD (project_tempo_values);
 static void
 project_length()
 {
-  ProjectImplP project = ProjectImpl::create ("LengthTest");
-  TASSERT (project);
+  ProjectP project = ProjectImpl::create ("LengthTest");
+  TrackP track = project->create_track();
+  TCMP (project->length(), ==, 0);
+  uint notifications = 0;
+  auto connection = project->on_event ("notify:length", [&] (const Event&) { notifications++; });
+  auto expect_length = [&] (double expected) {
+    TCMP (project->length(), ==, expected);
+    TASSERT (notifications > 0);
+    notifications = 0;
+  };
+  auto check_change = [&] (auto change, double expected) {
+    const double before = project->length();
+    project->ungroup_undo();
+    change();
+    expect_length (expected);
+    project->undo();
+    expect_length (before);
+    project->redo();
+    expect_length (expected);
+  };
 
-  double len = project->length();
-  TASSERT (len >= 0.0);
+  project->ungroup_undo();
+  ClipP midi = track->create_midi_clip ("LengthClip", 1, 3);
+  expect_length (4);
+  check_change ([&] { project->bpm (60); }, 8);
+  check_change ([&] { midi->position ({ { 2, 12 }, 0 }); }, 12);
+  check_change ([&] { midi->remove_self(); }, 0);
+  check_change ([&] { track->create_audio_clip ("LastClip", 20, 4); }, 24);
+  check_change ([&] { track->remove_self(); }, 0);
 
   project->discard();
 }

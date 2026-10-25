@@ -90,18 +90,25 @@ public:
       project_.emit_notify ("numerator");
     if (id == tracktion_engine::IDs::denominator)
       project_.emit_notify ("denominator");
+    if ((te::Clip::isClipState (vtree) && (id == te::IDs::start || id == te::IDs::length)) ||
+        vtree.hasType (te::IDs::TEMPO) || vtree.hasType (te::IDs::TIMESIG))
+      project_.emit_notify ("length");
   }
   void
   valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
   {
     if (parent == edit_->state && te::TrackList::isTrack (child))
       project_.emit_notify ("all_tracks");
+    if (te::TrackList::isTrack (child) || te::Clip::isClipState (child) || parent.hasType (te::IDs::TEMPOSEQUENCE))
+      project_.emit_notify ("length");
   }
   void
   valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree &child, int) override
   {
     if (parent == edit_->state && te::TrackList::isTrack (child))
       project_.emit_notify ("all_tracks");
+    if (te::TrackList::isTrack (child) || te::Clip::isClipState (child) || parent.hasType (te::IDs::TEMPOSEQUENCE))
+      project_.emit_notify ("length");
   }
   void
   valueTreeChildOrderChanged (juce::ValueTree &parent, int, int newIndex) override
@@ -407,7 +414,7 @@ ProjectImpl::telemetry () const
 }
 
 void
-ProjectImpl::foreach_track (const std::function<bool(Track&,int)> &cb)
+ProjectImpl::foreach_track (const std::function<bool(Track&,int)> &cb) const
 {
   std::function<bool(te::Track&,int)> foreach_track = [&] (te::Track &t, int depth)
   {
@@ -835,6 +842,18 @@ ProjectImpl::length () const
 }
 
 void
+ProjectImpl::length (double)
+{
+  warning ("Project.length is read-only");
+}
+
+StringS
+ProjectImpl::read_only_properties () const
+{
+  return { "all_tracks", "length" };
+}
+
+void
 ProjectImpl::group_undo (const String &undoname)
 {
   return_unless (!!edit_);
@@ -953,7 +972,7 @@ ProjectImpl::create_track ()
 }
 
 TrackS
-ProjectImpl::all_tracks ()
+ProjectImpl::all_tracks () const
 {
   TrackS tracks;
   auto tf = [&] (Track &track, int depth)
@@ -963,6 +982,12 @@ ProjectImpl::all_tracks ()
   };
   foreach_track (tf);
   return tracks;
+}
+
+void
+ProjectImpl::all_tracks (const TrackS &)
+{
+  warning ("Project.all_tracks is read-only");
 }
 
 TrackP

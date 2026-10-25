@@ -54,15 +54,17 @@ export async function test_project_play_toggle (): Promise<boolean>
     }
     let release!: () => void;
     const waiting = new Promise<void> (resolve => { release = resolve; });
+    let delay_refetch = false;
     const delayed_project = new Proxy (project, {
       get (target, key) {
         if (key === '$refetch')
-          return async callback => { await waiting; return target.$refetch (callback); };
+          return async callback => { if (delay_refetch) await waiting; return target.$refetch (callback); };
         return Reflect.get (target, key);
       },
     });
     try {
       await App.assign_project (delayed_project, 'b-app');
+      delay_refetch = true;
       button().click();
       await App.assign_project (old_project, 'b-app');
       release();
