@@ -8,7 +8,7 @@
 namespace Ase {
 
 /// Base type for classes that have a Property.
-class GadgetImpl : public ObjectImpl, public CustomDataContainer, public virtual Gadget {
+class GadgetImpl : public ObjectImpl, public virtual Gadget {
   GadgetImpl *parent_ = nullptr;
   uint64_t    gadget_flags_ = 0;
   ValueR      session_data_;
@@ -19,11 +19,8 @@ protected:
   uint64_t       gadget_flags      (uint64_t setbits, uint64_t mask = ~uint64_t (0));
   static String  canonify_key      (const String &input);
   virtual       ~GadgetImpl        ();
-  virtual String fallback_name     () const;
   virtual void   create_properties ();
 public:
-  String         name              () const override;
-  void           name              (const std::string &n) override;
   void           _set_parent       (GadgetImpl *parent) override;
   GadgetImpl*    _parent           () const override    { return parent_; }
   String         type_nick         () const override;

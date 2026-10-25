@@ -33,11 +33,14 @@ ASE_TEST_LIST := \
   member_tmpl_tests \
   memory_cstring_tests \
   mpmc_stack_test \
+  name_undo_redo \
   nested_cotask_test \
   path_tests \
   plugin_creation \
+  plugin_name \
   project_creation \
   project_length \
+  project_name_notifications \
   project_playback_state \
   project_tempo_values \
   project_track_management \
@@ -53,6 +56,7 @@ ASE_TEST_LIST := \
   regex_tests \
   semaphore_concurrent_test \
   semaphore_multiple_test \
+  server_name \
   signalutils_tests \
   sndfile_tests \
   sortnet_tests \
@@ -60,6 +64,7 @@ ASE_TEST_LIST := \
   test_audio_sample_load \
   test_serializable_hierarchy \
   track_control_classification \
+  track_fixed_names \
   track_hidden \
   track_mute_solo \
   track_name \

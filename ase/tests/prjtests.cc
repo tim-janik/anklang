@@ -472,8 +472,10 @@ track_name()
   ProjectImplP project = ProjectImpl::create ("TrackNameTest");
   TASSERT (project);
 
+  TrackP first = project->all_tracks().back();
+  TASSERT (first->name() == "Track 1" && project->master_track()->name() == "Master");
   TrackP track = project->create_track();
-  TASSERT (track);
+  TASSERT (track && track->name() == "Track 2");
 
   // Set and get track name
   track->name ("MyTrack");
@@ -482,9 +484,189 @@ track_name()
   track->name ("AnotherName");
   TASSERT (track->name() == "AnotherName");
 
+  // Empty names show Tracktion's default
+  track->name ("");
+  TASSERT (track->name() == "Track 1");
+  track->name ("Track 2");
+
+  // New tracks get a free number, in the same undo step as their creation
+  first->remove_self();
+  TASSERT (track->name() == "Track 2");
+  project->ungroup_undo();
+  const size_t ntracks = project->all_tracks().size();
+  TrackP third = project->create_track();
+  TASSERT (third->name() == "Track 3");
+  project->undo();
+  TASSERT (project->all_tracks().size() == ntracks);
+
   project->discard();
 }
 TEST_ADD (track_name);
+
+static void
+track_fixed_names()
+{
+  ProjectP project = Server::instance().create_project ("FixedNamesTest");
+  TrackS tracks = project->all_tracks();
+  tracks.push_back (project->master_track());
+  for (const TrackP &track : tracks)
+    if (track->is_control_track() || track->is_master())
+      {
+        const String initial = track->name();
+        if (initial == "Chord")
+          continue;
+        const StringS read_only = track->read_only_properties();
+        TASSERT (std::count (read_only.begin(), read_only.end(), "name"));
+        uint notifications = 0;
+        auto connection = track->on_event ("notify:name", [&] (const Event&) { notifications++; });
+        track->name ("Ignored Name");
+        TASSERT (track->name() == initial && notifications == 0);
+      }
+  project->discard();
+}
+TEST_ADD (track_fixed_names);
+
+static void
+plugin_name()
+{
+  ProjectP project = Server::instance().create_project ("PluginNameTest");
+  TrackP track = project->create_track();
+  for (const String &type : { "text", "insert" })
+    {
+      PluginP plugin = track->create_plugin (type);
+      TASSERT (plugin);
+      const String initial = plugin->name();
+      const StringS read_only = plugin->read_only_properties();
+      TASSERT (!std::count (read_only.begin(), read_only.end(), "name"));
+      uint notifications = 0;
+      auto connection = plugin->on_event ("notify:name", [&] (const Event&) { notifications++; });
+      const String project_name = project->name();
+      project->ungroup_undo();
+      project->name (project_name + " marker");
+      plugin->name ("");
+      TASSERT (plugin->name() == initial && notifications == 0);
+      project->undo();
+      TASSERT (project->name() == project_name);
+      project->redo();
+      TASSERT (project->name() == project_name + " marker");
+      plugin->name ("New Name");
+      TASSERT (plugin->name() == "New Name" && notifications > 0);
+      notifications = 0;
+      plugin->name ("");
+      TASSERT (plugin->name() == initial && notifications > 0);
+    }
+  PluginP fixed = track->create_plugin ("4osc");
+  TASSERT (fixed);
+  const String initial = fixed->name();
+  const StringS read_only = fixed->read_only_properties();
+  TASSERT (std::count (read_only.begin(), read_only.end(), "name"));
+  fixed->name ("Ignored Name");
+  TASSERT (fixed->name() == initial);
+  project->discard();
+}
+TEST_ADD (plugin_name);
+
+static void
+project_name_notifications()
+{
+  ProjectP project = Server::instance().create_project ("ProjectNameNotifyTest");
+  TrackP track = project->create_track();
+  GadgetS children = {
+    track,
+    track->create_midi_clip ("Midi", 0, 1),
+    track->create_audio_clip ("Audio", 2, 1),
+    track->create_plugin ("text"),
+    track->create_plugin ("insert"),
+  };
+  uint notifications = 0;
+  auto connection = project->on_event ("notify:name", [&] (const Event&) { notifications++; });
+  for (const auto &child : children)
+    {
+      TASSERT (child);
+      project->ungroup_undo();
+      child->name ("Child Name");
+      TASSERT (project->name() == "ProjectNameNotifyTest" && notifications == 0);
+      project->undo();
+      TASSERT (notifications == 0);
+      project->redo();
+      TASSERT (notifications == 0);
+    }
+  project->name ("Project Name");
+  TASSERT (notifications > 0);
+  project->discard();
+}
+TEST_ADD (project_name_notifications);
+
+static void
+name_undo_redo()
+{
+  ProjectP project = Server::instance().create_project ("NameUndoTest");
+  TrackP track = project->create_track();
+  TrackP chord;
+  for (const TrackP &control : project->all_tracks())
+    if (control->is_control_track() && control->name() == "Chord")
+      chord = control;
+  TASSERT (chord);
+  const StringS read_only = chord->read_only_properties();
+  TASSERT (!std::count (read_only.begin(), read_only.end(), "name"));
+  const std::vector<std::pair<GadgetP,String>> writable = {
+    { project, "" },
+    { track, "Track 1" },
+    { chord, "" },
+    { track->create_midi_clip ("Midi", 0, 1), "" },
+    { track->create_audio_clip ("Audio", 2, 1), "" },
+    { track->create_plugin ("text"), "Text Plugin" },
+    { track->create_plugin ("insert"), "Insert Plugin" },
+  };
+  for (const auto &[gadget, default_name] : writable)
+    {
+      TASSERT (gadget);
+      const String initial = gadget->name();
+      uint notifications = 0;
+      auto connection = gadget->on_event ("notify:name", [&] (const Event&) { notifications++; });
+      auto check = [&] (const String &expected) {
+        TASSERT (gadget->name() == expected && notifications > 0);
+        notifications = 0;
+      };
+      gadget->name ("First Name");
+      check ("First Name");
+      gadget->name ("Second Name");
+      check ("Second Name");
+      gadget->name ("Second Name");
+      TASSERT (notifications == 0);
+      project->undo();
+      check ("First Name");
+      project->undo();
+      check (initial);
+      project->redo();
+      check ("First Name");
+      project->redo();
+      check ("Second Name");
+      gadget->name ("");
+      check (default_name);
+      project->undo();
+      check ("Second Name");
+      project->redo();
+      check (default_name);
+    }
+  project->discard();
+}
+TEST_ADD (name_undo_redo);
+
+static void
+server_name()
+{
+  Server &server = Server::instance();
+  TASSERT (server.name().empty() && server.read_only_properties() == StringS { "name" });
+  uint notifications = 0;
+  auto connection = server.on_event ("notify:name", [&] (const Event&) { notifications++; });
+  for (const String &name : { "Renamed Server", "" })
+    {
+      server.name (name);
+      TASSERT (server.name().empty() && notifications == 0);
+    }
+}
+TEST_ADD (server_name);
 
 static void
 clip_creation()

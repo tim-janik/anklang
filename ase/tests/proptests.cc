@@ -30,6 +30,8 @@ struct LoopProject {
     ClipP midi_clip = track->create_midi_clip ("MidiClip", 1, 2);
     ClipP audio_clip = track->create_audio_clip ("AudioClip", 4, 2);
     PluginP plugin = track->create_plugin ("4osc");
+    PluginP text_plugin = track->create_plugin ("text");
+    PluginP insert_plugin = track->create_plugin ("insert");
     project->clear_undo();
     add ("Project", ProjectP (project));
     add ("MasterTrack", project->master_track());
@@ -37,9 +39,11 @@ struct LoopProject {
     add ("MidiClip", midi_clip);
     add ("AudioClip", audio_clip);
     add ("Plugin", plugin);
+    add ("TextPlugin", text_plugin);
+    add ("InsertPlugin", insert_plugin);
     for (TrackP t : project->all_tracks())
       {
-        add ("", t);
+        add (t->is_control_track() && t->name() == "Chord" ? "ChordTrack" : "", t);
         for (ClipP c : t->launcher_clips())
           add ("", c);
         for (PluginP p : t->list_plugins())

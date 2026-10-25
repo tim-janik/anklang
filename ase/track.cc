@@ -182,25 +182,16 @@ TrackImpl::name (const std::string &n)
 {
   if (auto trackp = track_.get())
     if (!trkn_fixed_name (*trackp))
-      trackp->setName (juce::String (n));
+      {
+        trackp->edit.getUndoManager().beginNewTransaction ("Set Track Name");
+        trackp->setName (juce::String (n));
+      }
 }
 
 ProjectImpl*
 TrackImpl::project () const
 {
   return project_;
-}
-
-String
-TrackImpl::fallback_name() const
-{
-  if (is_master())
-    return "Master";
-  if (auto project_ = project()) {
-    ssize_t i = project_->track_index (*this);
-    return string_format ("Track %u", i >= 0 ? i + 1 : i);
-  }
-  return DeviceImpl::fallback_name();
 }
 
 bool
