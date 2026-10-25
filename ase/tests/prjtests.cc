@@ -472,9 +472,10 @@ track_name()
   ProjectImplP project = ProjectImpl::create ("TrackNameTest");
   TASSERT (project);
 
+  TrackP first = project->all_tracks().back();
+  TASSERT (first->name() == "Track 1" && project->master_track()->name() == "Master");
   TrackP track = project->create_track();
-  TASSERT (track);
-  TASSERT (track->name() == "Track 1" && project->master_track()->name() == "Master");
+  TASSERT (track && track->name() == "Track 2");
 
   // Set and get track name
   track->name ("MyTrack");
@@ -483,8 +484,20 @@ track_name()
   track->name ("AnotherName");
   TASSERT (track->name() == "AnotherName");
 
+  // Empty names show Tracktion's default
   track->name ("");
   TASSERT (track->name() == "Track 1");
+  track->name ("Track 2");
+
+  // New tracks get a free number, in the same undo step as their creation
+  first->remove_self();
+  TASSERT (track->name() == "Track 2");
+  project->ungroup_undo();
+  const size_t ntracks = project->all_tracks().size();
+  TrackP third = project->create_track();
+  TASSERT (third->name() == "Track 3");
+  project->undo();
+  TASSERT (project->all_tracks().size() == ntracks);
 
   project->discard();
 }

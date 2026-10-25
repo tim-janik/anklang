@@ -300,6 +300,17 @@ test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
   transport.setPosition (tracktion::TimePosition::fromSeconds (start));
 }
 
+static bool
+trkn_has_track_name (te::Edit &edit, const juce::String &name)
+{
+  bool found = false;
+  edit.visitAllTracksRecursive ([&] (te::Track &track) {
+    found = track.getName() == name;
+    return !found;
+  });
+  return found;
+}
+
 ProjectImpl::ProjectImpl()
 {
   edit_ = std::make_unique<te::Edit> (*trkn_engine(), te::Edit::forEditing);
@@ -313,6 +324,11 @@ ProjectImpl::ProjectImpl()
   if (auto filename = getenv ("SFZ"))
     test_sfz (this, edit_.get(), filename);
 
+  edit_->visitAllTracksRecursive ([] (te::Track &track) {
+    if (track.isAudioTrack() || track.isFolderTrack())
+      track.setName (track.getName());
+    return true;
+  });
   edit_->getUndoManager().clearUndoHistory();
 
   /* TODO: MusicalTuning
@@ -926,6 +942,10 @@ ProjectImpl::create_track ()
   return_unless (edit_ && !discarded_, nullptr);
   auto t = edit_->insertNewAudioTrack (tracktion::TrackInsertPoint (nullptr, nullptr), nullptr);
   if (!t) return nullptr;
+  int n = te::getAudioTracks (*edit_).size();
+  while (trkn_has_track_name (*edit_, "Track " + juce::String (n)))
+    n++;
+  t->setName ("Track " + juce::String (n));
   TrackImplP track = TrackImpl::from_trkn (*t);
   emit_event ("track", "insert", { { "track", track }, });
   emit_notify ("all_tracks");
