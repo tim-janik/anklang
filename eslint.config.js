@@ -149,6 +149,12 @@ export default [
         { ignoreDestructuring: true }],
       'no-restricted-properties': ['error', user_agent_restriction,
         { object: 'App', property: 'project', message: 'Use Shell.project in components.' }],
+      'no-restricted-syntax': ['error', {
+        selector: "CallExpression[callee.property.name='on']:matches(" +
+          "[arguments.0.value=/^notify:/], [arguments.0.quasis.0.value.raw=/^notify:/], " +
+          "[arguments.0.left.value=/^notify:/])",
+        message: 'Read proxy fields in components; they update on property notifications.',
+      }],
     },
   },
 

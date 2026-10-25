@@ -39,6 +39,20 @@ test ('typed JSX keeps upstream APIs and callback props', async () => {
   `);
 });
 
+test ('components read proxy fields instead of subscribing to property notifications', async () => {
+  for (const extension of ['js', 'jsx', 'ts', 'tsx']) {
+    const file_path = `ui/b/lint_test.${extension}`;
+    for (const event_name of ["'notify:all_tracks'", '"notify:length"', '`notify:all_tracks`',
+                             '`notify:${Shell.project.name}`', "'notify:' + Shell.project.name"])
+      await check (file_path, `Shell.project.on (${event_name}, () => {});`, ['no-restricted-syntax']);
+    await check (file_path, 'export const tracks = Shell.project.all_tracks;');
+    await check (file_path, `Shell.project.on ('track:insert', () => {});`);
+    await check (file_path, 'Shell.project.on (`track:${Shell.project.name}`, () => {});');
+    await check (file_path, `Shell.project.on ('track:' + Shell.project.name, () => {});`);
+  }
+  await check ('ui/wrapper.js', `Shell.project.on ('notify:all_tracks', () => {});`);
+});
+
 test ('HTML classes come from ui/tailwind.css', async () => {
   await check ('ui/lint_test.html', '<div class="bg-dim-500 flex b-app"></div>\n');
   await check ('ui/lint_test.html', '<div class="no-such-class"></div>\n', ['better-tailwindcss/no-unregistered-classes']);
