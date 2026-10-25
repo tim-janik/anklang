@@ -65,6 +65,7 @@ ASE_TEST_LIST := \
   sndfile_tests \
   sortnet_tests \
   storage_links \
+  storage_mimetype \
   storage_roundtrip \
   string_tests \
   test_audio_sample_load \

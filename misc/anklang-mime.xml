@@ -2,6 +2,13 @@
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
   <mime-type type="application/x-anklang">
     <glob pattern="*.anklang"/>
+    <magic priority="70">
+      <match type="string" value="PK\003\004" offset="0">
+        <match type="string" value="mimetype" offset="30">
+          <match type="string" value="application/x-anklang" offset="38"/>
+        </match>
+      </match>
+    </magic>
     <comment>Anklang Project</comment>
   </mime-type>
 </mime-info>
