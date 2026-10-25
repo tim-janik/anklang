@@ -137,4 +137,28 @@ storage_links()
 }
 TEST_ADD (storage_links);
 
+static void
+storage_long_link_error()
+{
+  const String dir = anklang_cachedir_create();
+  TASSERT (!dir.empty());
+  const String archive = Path::join (dir, "long-link.anklang");
+  const String link = Path::join (dir, "link");
+  String target;
+  for (size_t i = 0; i < 512; i++)
+    target += "./";
+  target += "target";
+  TASSERT (Path::stringwrite (Path::join (dir, "target"), "linked data"));
+  TASSERT (symlink (target.c_str(), link.c_str()) == 0);
+  TCMP (Path::stringread (link), ==, "linked data");
+
+  StorageWriter writer;
+  TASSERT (writer.open_with_mimetype (archive, "application/x-anklang") == Error::NONE);
+  errno = 0;
+  TASSERT (writer.store_file ("link", link) != Error::NONE);
+  TASSERT (writer.remove_opened() == Error::NONE);
+  anklang_cachedir_cleanup (dir);
+}
+TEST_ADD (storage_long_link_error);
+
 }

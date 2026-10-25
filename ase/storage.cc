@@ -211,7 +211,7 @@ public:
     mz_zip_writer_delete (&writer);
     writer = nullptr;
     errno = saved_errno;
-    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno ? errno : EIO);
   }
   Error
   remove_opened()
@@ -241,7 +241,7 @@ public:
         mz_zip_writer_delete (&writer);
         writer = nullptr;
         unlink (filename.c_str());
-        return ase_error_from_errno (saved_errno);
+        return ase_error_from_errno (saved_errno ? saved_errno : EIO);
       }
     return Error::NONE;
   }
@@ -274,7 +274,7 @@ public:
       }
     if (mzerr == MZ_OK)
       mzerr = mz_zip_writer_add_buffer (writer, buffer.data(), buffer.size(), &file_info);
-    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno ? errno : EIO);
   }
   Error
   store_file (const String &filename, const String &ondiskpath, bool maycompress, bool follow_links)
@@ -289,7 +289,7 @@ public:
     int32_t mzerr = mz_zip_writer_add_file (writer, ondiskpath.c_str(), filename.c_str());
     if (!maycompress)
       mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_ZSTD);
-    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno ? errno : EIO);
   }
 };
 
@@ -368,7 +368,7 @@ public:
     mz_zip_reader_delete (&reader);
     reader = nullptr;
     errno = saved_errno;
-    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
+    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno ? errno : EIO);
   }
   Error
   open_for_reading (const String &filename)
@@ -390,7 +390,7 @@ public:
         if (saved_errno == ELIBBAD ||
             (saved_errno == ENOENT && Path::check (zipname, "f")))
           return Error::BROKEN_ARCHIVE;
-        return ase_error_from_errno (saved_errno);
+        return ase_error_from_errno (saved_errno ? saved_errno : EIO);
       }
     return Error::NONE;
   }
@@ -593,7 +593,7 @@ public:
         const int saved_errno = errno;
         mz_zip_reader_delete (&reader_);
         reader_ = nullptr;
-        return saved_errno == ELIBBAD ? Error::BROKEN_ARCHIVE : ase_error_from_errno (saved_errno);
+        return saved_errno == ELIBBAD ? Error::BROKEN_ARCHIVE : ase_error_from_errno (saved_errno ? saved_errno : EIO);
       }
     return Error::NONE;
   }
