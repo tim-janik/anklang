@@ -554,12 +554,12 @@ ProjectImpl::save_project (const String &utf8filename, bool collect)
   anklang_cachedir_clean_stale();
   storage_->writer_cachedir = anklang_cachedir_create();
   storage_->asset_hashes.clear();
-  StorageWriter ws (Storage::AUTO_ZSTD);
+  StorageWriter ws;
   Error error = ws.open_with_mimetype (abs_projectfile, "application/x-anklang");
   if (!error)
     {
       // serialize Project (TODO: use tracktion_engine saving & loading)
-      error = ws.store_file_data ("project.json", "{}\n", true);
+      error = ws.store_file_data ("project.json", "{}\n");
     }
   if (!error)
     for (const auto &[path, dest] : storage_->writer_files) {
@@ -707,7 +707,7 @@ ProjectImpl::load_project (const String &utf8filename)
   if (!Path::check (fname, "e"))
     return ase_error_from_errno (errno);
   // try reading .anklang container
-  StorageReader rs (Storage::AUTO_ZSTD);
+  StorageReader rs;
   Error error = rs.open_for_reading (fname);
   if (!!error)
     return error;

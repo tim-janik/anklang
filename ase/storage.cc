@@ -7,7 +7,6 @@
 #include "platform.hh"
 #include "minizip.h"
 #include "strings.hh"
-#include "compress.hh"
 #include "internal.hh"
 #include <stdlib.h>     // mkdtemp
 #include <sys/stat.h>   // mkdir
@@ -190,16 +189,11 @@ anklang_cachedir_clean_stale()
         }
 }
 
-// == Storage ==
-Storage::~Storage ()
-{}
-
 // == StorageWriter ==
 class StorageWriter::Impl {
 public:
   void *writer = nullptr;
   String zipname;
-  int flags = 0;
   ~Impl()
   {
     if (writer)
@@ -241,7 +235,7 @@ public:
     mz_zip_writer_set_store_links (writer, false);
     mz_zip_writer_set_follow_links (writer, true);
     mz_zip_writer_set_compress_level (writer, MZ_COMPRESS_LEVEL_BEST);
-    mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_DEFLATE);
+    mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_ZSTD);
     int mzerr = mz_zip_writer_open_file (writer, zipname.c_str(), 0, false);
     if (mzerr != MZ_OK)
       {
@@ -262,7 +256,7 @@ public:
     mz_zip_file file_info = {
       .version_madeby = MZ_VERSION_MADEBY,
       .flag = MZ_ZIP_FLAG_UTF8,
-      .compression_method = uint16_t (compress ? MZ_COMPRESS_METHOD_DEFLATE : MZ_COMPRESS_METHOD_STORE),
+      .compression_method = uint16_t (compress ? MZ_COMPRESS_METHOD_ZSTD : MZ_COMPRESS_METHOD_STORE),
       .modified_date = fdate,
       .accessed_date = fdate,
       .creation_date = 0,
@@ -281,7 +275,7 @@ public:
         file_info.external_fa |= attrib << 16; // OS attrib
       }
     if (mzerr == MZ_OK)
-      mzerr = mz_zip_writer_add_buffer (writer, (void*) buffer.data(), buffer.size(), &file_info);
+      mzerr = mz_zip_writer_add_buffer (writer, buffer.data(), buffer.size(), &file_info);
     return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
   }
   Error
@@ -294,16 +288,14 @@ public:
       mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_STORE);
     int32_t mzerr = mz_zip_writer_add_file (writer, ondiskpath.c_str(), filename.c_str());
     if (!maycompress)
-      mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_DEFLATE);
+      mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_ZSTD);
     return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno);
   }
 };
 
-StorageWriter::StorageWriter (StorageFlags sflags) :
+StorageWriter::StorageWriter () :
   impl_ (std::make_shared<StorageWriter::Impl>())
-{
-  impl_->flags = sflags;
-}
+{}
 
 StorageWriter::~StorageWriter ()
 {}
@@ -321,6 +313,7 @@ StorageWriter::open_with_mimetype (const String &filename, const String &mimetyp
   Error err = open_for_writing (filename);
   if (err == Error::NONE)
     {
+      // ZIP-with-mimetype for file(1): known size and creation_date = 0 keep mimetype free of extra fields.
       const int64_t ase_project_start = 844503962;
       err = impl_->store_file_data ("mimetype", mimetype, false, ase_project_start);
       if (err != Error::NONE && impl_)
@@ -330,19 +323,10 @@ StorageWriter::open_with_mimetype (const String &filename, const String &mimetyp
 }
 
 Error
-StorageWriter::store_file_data (const String &filename, const String &buffer, bool alwayscompress)
+StorageWriter::store_file_data (const String &filename, const String &buffer)
 {
   assert_return (impl_, Error::INTERNAL);
-  const bool compressed = is_compressed (buffer);
-  if (!compressed && (alwayscompress || impl_->flags & AUTO_ZSTD))
-    {
-      const String cdata = zstd_compress (buffer);
-      if (alwayscompress || cdata.size() + 128 <= buffer.size())
-        return impl_->store_file_data (filename + ".zst", cdata, false, time (nullptr));
-    }
-  return impl_->store_file_data (filename, buffer,
-                                 compressed ? false : true,
-                                 time (nullptr));
+  return impl_->store_file_data (filename, buffer, !is_compressed (buffer), time (nullptr));
 }
 
 Error
@@ -371,7 +355,6 @@ class StorageReader::Impl {
 public:
   void *reader = nullptr;
   String zipname;
-  int flags = 0;
   ~Impl()
   {
     close();
@@ -437,15 +420,7 @@ public:
   {
     return_unless (mz_zip_reader_is_open (reader) == MZ_OK, false);
     String fname = Path::normalize (filename);
-    if (MZ_OK == mz_zip_reader_locate_entry (reader, fname.c_str(), false))
-      return true;
-    if (flags & AUTO_ZSTD)
-      {
-        fname += ".zst";
-        if (MZ_OK == mz_zip_reader_locate_entry (reader, fname.c_str(), false))
-          return true;
-      }
-    return false;
+    return MZ_OK == mz_zip_reader_locate_entry (reader, fname.c_str(), false);
   }
   String
   stringread (const String &filename)
@@ -453,38 +428,25 @@ public:
     errno = EINVAL;
     assert_return (mz_zip_reader_is_open (reader) == MZ_OK, {});
     String fname = Path::normalize (filename);
-    bool uncompress;
-    if (MZ_OK == mz_zip_reader_locate_entry (reader, fname.c_str(), false))
-      uncompress = false;
-    else if (flags & AUTO_ZSTD)
-      {
-        fname += ".zst";
-        if (MZ_OK == mz_zip_reader_locate_entry (reader, fname.c_str(), false))
-          uncompress = true;
-        else
-          return_with_errno (ENOENT, {});
-      }
-    else
+    if (MZ_OK != mz_zip_reader_locate_entry (reader, fname.c_str(), false))
       return_with_errno (ENOENT, {});
     ssize_t len = mz_zip_reader_entry_save_buffer_length (reader);
     if (len >= 0)
       {
         String buffer (len, 0);
-        if (MZ_OK == mz_zip_reader_entry_save_buffer (reader, &buffer[0], buffer.size()))
+        if (MZ_OK == mz_zip_reader_entry_save_buffer (reader, buffer.data(), buffer.size()))
           {
             errno = 0;
-            return uncompress ? zstd_uncompress (buffer) : buffer;
+            return buffer;
           }
       }
     return_with_errno (ENOENT, {});
   }
 };
 
-StorageReader::StorageReader (StorageFlags sflags) :
+StorageReader::StorageReader () :
   impl_ (std::make_shared<StorageReader::Impl>())
-{
-  impl_->flags = sflags;
-}
+{}
 
 StorageReader::~StorageReader ()
 {}
@@ -662,7 +624,7 @@ public:
 };
 
 StreamReaderP
-stream_reader_zip_member (const String &archive, const String &member, Storage::StorageFlags f)
+stream_reader_zip_member (const String &archive, const String &member)
 {
   auto readerp = std::make_shared<StreamReaderZipMember>();
   if (Error::NONE == readerp->open_zip (archive))
@@ -670,15 +632,6 @@ stream_reader_zip_member (const String &archive, const String &member, Storage::
       Error error = readerp->open_entry (member);
       if (Error::NONE == error)
         return readerp;
-      if (error == Error::FILE_NOT_FOUND && f & Storage::AUTO_ZSTD)
-        {
-          const String memberzstd = member + ".zst";
-          if (Error::NONE == readerp->open_entry (memberzstd))
-            {
-              StreamReaderP istream = readerp;
-              return stream_reader_zstd (istream);
-            }
-        }
     }
   return nullptr;
 }

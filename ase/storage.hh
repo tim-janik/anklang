@@ -5,36 +5,26 @@
 
 namespace Ase {
 
-class Storage {
-protected:
-  virtual ~Storage () = 0;
-public:
-  enum StorageFlags {
-    NONE      = 0,
-    AUTO_ZSTD = 1,
-  };
-};
-
-class StorageWriter : public Storage {
+class StorageWriter {
   class Impl;
   std::shared_ptr<StorageWriter::Impl> impl_;
 public:
-  explicit StorageWriter      (StorageFlags = StorageFlags::NONE);
+  explicit StorageWriter      ();
   virtual ~StorageWriter      ();
   // Writer API
   Error    open_for_writing   (const String &filename);
   Error    open_with_mimetype (const String &filename, const String &mimetype);
-  Error    store_file_data    (const String &filename, const String &buffer, bool alwayscompress = false);
+  Error    store_file_data    (const String &filename, const String &buffer);
   Error    store_file         (const String &filename, const String &ondiskpath, bool maycompress = true);
   Error    close              ();
   Error    remove_opened      ();
 };
 
-class StorageReader : public Storage {
+class StorageReader {
   class Impl;
   std::shared_ptr<StorageReader::Impl> impl_;
 public:
-  explicit StorageReader      (StorageFlags = StorageFlags::NONE);
+  explicit StorageReader      ();
   virtual ~StorageReader      ();
   // Reader API
   Error    open_for_reading   (const String &filename);
@@ -55,7 +45,7 @@ public:
 };
 
 StreamReaderP stream_reader_from_file  (const String &file);
-StreamReaderP stream_reader_zip_member (const String &archive, const String &member, Storage::StorageFlags f = Storage::AUTO_ZSTD);
+StreamReaderP stream_reader_zip_member (const String &archive, const String &member);
 
 class StreamWriter {
 public:

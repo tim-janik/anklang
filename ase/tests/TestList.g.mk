@@ -64,6 +64,7 @@ ASE_TEST_LIST := \
   signalutils_tests \
   sndfile_tests \
   sortnet_tests \
+  storage_roundtrip \
   string_tests \
   test_audio_sample_load \
   test_serializable_hierarchy \
