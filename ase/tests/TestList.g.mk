@@ -8,6 +8,7 @@ ASE_TEST_LIST := \
   atomic_valuestack_test \
   blake3_tests \
   callback_list_test \
+  clip_audio_notes_read_only \
   clip_creation \
   clip_mute_volume_pan \
   clip_note_notifications \

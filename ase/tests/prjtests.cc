@@ -689,6 +689,24 @@ clip_creation()
 TEST_ADD (clip_creation);
 
 static void
+clip_audio_notes_read_only()
+{
+  ProjectImplP project = ProjectImpl::create ("AudioNotesReadOnly");
+  ClipP clip = project->create_track()->create_audio_clip ("Audio", 0, 4);
+  const StringS read_only = clip->read_only_properties();
+  TASSERT (std::count (read_only.begin(), read_only.end(), "all_notes") == 1);
+  uint notifications = 0;
+  auto connection = clip->on_event ("notify", [&] (const Event&) { notifications++; });
+  project->clear_undo();
+  ClipNote note { .note_number = 60, .length_beats = 1, .velocity = 90 };
+  clip->all_notes ({ note });
+  TASSERT (clip->all_notes().empty());
+  TASSERT (!project->can_undo() && notifications == 0);
+  project->discard();
+}
+TEST_ADD (clip_audio_notes_read_only);
+
+static void
 clip_notes()
 {
   ProjectP project = ProjectImpl::create ("ClipNotesTest");

@@ -180,6 +180,7 @@ ClipImpl::list_all_notes ()
 void
 ClipImpl::all_notes (const ClipNoteS &notes)
 {
+  return_unless (dynamic_cast<te::MidiClip*> (clip_.get()));
   ClipNoteS batch = all_notes();
   // Mark all for deletion.
   for (auto &note : batch)
@@ -299,6 +300,8 @@ ClipImpl::read_only_properties () const
   StringS props = { "end_beat", "start_beat" };
   if (!dynamic_cast<te::AudioClipBase*> (clip_.get()))
     props.push_back ("pan");
+  if (!dynamic_cast<te::MidiClip*> (clip_.get()))
+    props.push_back ("all_notes");
   return props;
 }
 
