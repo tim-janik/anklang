@@ -8,8 +8,10 @@ ASE_TEST_LIST := \
   atomic_valuestack_test \
   blake3_tests \
   callback_list_test \
+  clip_audio_notes_read_only \
   clip_creation \
   clip_mute_volume_pan \
+  clip_note_notifications \
   clip_notes \
   clip_range \
   clip_undo_redo \
@@ -32,6 +34,7 @@ ASE_TEST_LIST := \
   mathutils_tests \
   member_tmpl_tests \
   memory_cstring_tests \
+  method_loop \
   mpmc_stack_test \
   name_undo_redo \
   nested_cotask_test \
