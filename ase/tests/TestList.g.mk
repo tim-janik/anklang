@@ -34,6 +34,7 @@ ASE_TEST_LIST := \
   mathutils_tests \
   member_tmpl_tests \
   memory_cstring_tests \
+  method_loop \
   mpmc_stack_test \
   name_undo_redo \
   nested_cotask_test \

@@ -320,4 +320,135 @@ property_loop()
 }
 TEST_ADD (property_loop);
 
+static const std::map<String,Change> method_checks = {
+  { "Project.create_track", [] (LoopProject &lp) { lp.call ("create_track", lp.ref ("Project")); } },
+  { "Project.group_undo", [] (LoopProject &lp) {
+    lp.call ("group_undo", lp.ref ("Project"), "\"Rename Clips\"");
+    lp.call ("set/name", lp.ref ("MidiClip"), "\"Renamed MIDI\"");
+    lp.call ("set/name", lp.ref ("AudioClip"), "\"Renamed Audio\"");
+    lp.call ("ungroup_undo", lp.ref ("Project"));
+  } },
+  { "Track.create_midi_clip", [] (LoopProject &lp) {
+    lp.call ("create_midi_clip", lp.ref ("Track"), "\"New MIDI Clip\",1,2");
+  } },
+  { "Track.create_audio_clip", [] (LoopProject &lp) {
+    lp.call ("create_audio_clip", lp.ref ("Track"), "\"New Audio Clip\",8,2");
+  } },
+  { "Track.create_plugin", [] (LoopProject &lp) { lp.call ("create_plugin", lp.ref ("Track"), "\"4osc\""); } },
+  { "Gadget.remove_self/Track", [] (LoopProject &lp) { lp.call ("remove_self", lp.ref ("Track")); } },
+  { "Gadget.remove_self/MidiClip", [] (LoopProject &lp) { lp.call ("remove_self", lp.ref ("MidiClip")); } },
+  { "Gadget.remove_self/AudioClip", [] (LoopProject &lp) { lp.call ("remove_self", lp.ref ("AudioClip")); } },
+  { "Gadget.remove_self/Plugin", [] (LoopProject &lp) { lp.call ("remove_self", lp.ref ("Plugin")); } },
+};
+
+static const std::map<String,String> exempt_methods = {
+  { "Clip.change_batch",           "Special note-editing flow, deferred to its planned rewrite in #141." },
+  { "Track.create_audio_clip",     "Audio clips have no API list, so the loop sees no change." },
+  { "Gadget.remove_self/Track",    "Audio clip handles cannot be reacquired on undo." },
+  { "Gadget.remove_self/AudioClip", "Audio clips have no API list, so restored clips cannot be reacquired." },
+  { "Gadget.remove_self/Plugin",   "Undo reuses the plugin's invalidated API handle." },
+  { "Emittable.emit_event",        "Event delivery, not project data." },
+  { "Emittable.emit_notify",       "Event delivery, not project data." },
+  { "Emittable.js_trigger",        "Event subscription, not project data." },
+  { "Gadget.type_nick",            "Type query." },
+  { "Gadget.list_properties",      "Property metadata query." },
+  { "Gadget.access_property",      "Property handle query." },
+  { "Gadget.access_properties",    "Property handle query." },
+  { "Gadget.get_value",            "Property value query." },
+  { "Gadget.set_value",            "Uses Property handles; these objects expose no writable Property handles yet." },
+  { "Gadget.read_only_properties", "Property metadata query." },
+  { "Gadget.set_data",             "Session data, intentionally outside the Edit and undo." },
+  { "Gadget.get_data",             "Session data query." },
+  { "Device.device_info",          "Device metadata query." },
+  { "Plugin.plugin_type",          "Plugin type query." },
+  { "Clip.list_all_notes",         "Query, compared as notes after every change." },
+  { "Clip.telemetry",              "Telemetry memory location query." },
+  { "Track.is_master",             "Track type query." },
+  { "Track.is_control_track",      "Track type query." },
+  { "Track.list_plugins",          "Query, compared after every change." },
+  { "Track.access_device",         "Device handle query, currently returns nullptr." },
+  { "Track.create_monitor",        "Unimplemented, currently returns nullptr." },
+  { "Track.telemetry",             "Telemetry memory location query." },
+  { "Monitor.get_output",          "Output device query." },
+  { "Monitor.get_ochannel",        "Output channel query." },
+  { "Monitor.get_mix_freq",        "Sample rate query." },
+  { "Monitor.get_frame_duration",  "Frame duration query." },
+  { "Project.discard",             "Project lifetime, not an undoable edit." },
+  { "Project.start_playback",      "Transport state, playback has no undo." },
+  { "Project.pause_playback",      "Transport state, playback has no undo." },
+  { "Project.stop_playback",       "Transport state, playback has no undo." },
+  { "Project.all_tracks",          "Query, compared after every change." },
+  { "Project.master_track",        "Master track handle query." },
+  { "Project.save_project",        "File I/O, covered by step 7." },
+  { "Project.saved_filename",      "File name query." },
+  { "Project.load_project",        "File I/O, covered by step 7." },
+  { "Project.telemetry",           "Telemetry memory location query." },
+  { "Project.group_undo",          "Clip setters and change_batch start their own transactions, splitting explicit undo groups." },
+  { "Project.ungroup_undo",        "Undo history control, not a project mutation." },
+  { "Project.undo",                "Undo history control, exercised by the loop." },
+  { "Project.can_undo",            "Undo history query, exercised by the loop." },
+  { "Project.redo",                "Undo history control, exercised by the loop." },
+  { "Project.can_redo",            "Undo history query, exercised by the loop." },
+  { "Project.length",              "Query, read-only property coverage belongs to step 6." },
+  { "Project.match_serialized",    "Serialized state query." },
+};
+
+template<class T, class Base> static void
+list_methods (const String &cls, std::set<String> &methods)
+{
+  const StringS inherited = Jsonipc::Class<Base>::list_methods();
+  for (const auto &name : Jsonipc::Class<T>::list_methods())
+    if (name.find ('/') == name.npos && !std::count (inherited.begin(), inherited.end(), name))
+      methods.insert (cls + "." + name);
+}
+
+static void
+method_loop()
+{
+  std::set<String> methods;
+  // Server, Property and ResourceCrawler hold no project data and are exempt as classes.
+  list_methods<Emittable, SharedBase> ("Emittable", methods);
+  list_methods<Object, Emittable> ("Object", methods);
+  list_methods<Gadget, Object> ("Gadget", methods);
+  list_methods<Device, Gadget> ("Device", methods);
+  list_methods<Project, Device> ("Project", methods);
+  list_methods<Track, Device> ("Track", methods);
+  list_methods<Clip, Gadget> ("Clip", methods);
+  list_methods<Plugin, Device> ("Plugin", methods);
+  list_methods<Monitor, Gadget> ("Monitor", methods);
+  StringS failures;
+  for (const auto &key : methods)
+    if (!method_checks.count (key) && !exempt_methods.count (key) &&
+        !std::any_of (method_checks.begin(), method_checks.end(), [&] (const auto &entry) {
+          return string_startswith (entry.first, key + "/");
+        }))
+      failures.push_back (key + ": add a test lambda to method_checks or an exempt_methods line with a reason");
+  for (const auto &[key, reason] : exempt_methods)
+    if ((!methods.count (key) && !method_checks.count (key)) || reason.empty())
+      failures.push_back (key + ": remove the stale exemption or give a reason");
+  for (const auto &[key, change] : method_checks)
+    {
+      if (!methods.count (key.substr (0, key.find ('/'))) || !change)
+        {
+          failures.push_back (key + ": no such method or no test lambda");
+          continue;
+        }
+      LoopProject lp;
+      const Snapshot before = lp.snapshot();
+      lp.notified.clear();
+      change (lp);
+      const Snapshot after = lp.snapshot();
+      const StringS problems = check_undo (lp, before, after);
+      if (!exempt_methods.count (key))
+        for (const auto &problem : problems)
+          failures.push_back (key + ": " + problem);
+      else if (problems.empty())
+        failures.push_back (key + ": passes, remove it from exempt_methods");
+    }
+  for (const auto &failure : failures)
+    printerr ("%s\n", failure);
+  TASSERT (failures.empty());
+}
+TEST_ADD (method_loop);
+
 } // Anon
