@@ -491,6 +491,29 @@ track_name()
 TEST_ADD (track_name);
 
 static void
+track_fixed_names()
+{
+  ProjectP project = Server::instance().create_project ("FixedNamesTest");
+  TrackS tracks = project->all_tracks();
+  tracks.push_back (project->master_track());
+  for (const TrackP &track : tracks)
+    if (track->is_control_track() || track->is_master())
+      {
+        const String initial = track->name();
+        if (initial == "Chord")
+          continue;
+        const StringS read_only = track->read_only_properties();
+        TASSERT (std::count (read_only.begin(), read_only.end(), "name"));
+        uint notifications = 0;
+        auto connection = track->on_event ("notify:name", [&] (const Event&) { notifications++; });
+        track->name ("Ignored Name");
+        TASSERT (track->name() == initial && notifications == 0);
+      }
+  project->discard();
+}
+TEST_ADD (track_fixed_names);
+
+static void
 plugin_name()
 {
   ProjectP project = Server::instance().create_project ("PluginNameTest");
