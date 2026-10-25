@@ -554,6 +554,37 @@ plugin_name()
 TEST_ADD (plugin_name);
 
 static void
+project_name_notifications()
+{
+  ProjectP project = Server::instance().create_project ("ProjectNameNotifyTest");
+  TrackP track = project->create_track();
+  GadgetS children = {
+    track,
+    track->create_midi_clip ("Midi", 0, 1),
+    track->create_audio_clip ("Audio", 2, 1),
+    track->create_plugin ("text"),
+    track->create_plugin ("insert"),
+  };
+  uint notifications = 0;
+  auto connection = project->on_event ("notify:name", [&] (const Event&) { notifications++; });
+  for (const auto &child : children)
+    {
+      TASSERT (child);
+      project->ungroup_undo();
+      child->name ("Child Name");
+      TASSERT (project->name() == "ProjectNameNotifyTest" && notifications == 0);
+      project->undo();
+      TASSERT (notifications == 0);
+      project->redo();
+      TASSERT (notifications == 0);
+    }
+  project->name ("Project Name");
+  TASSERT (notifications > 0);
+  project->discard();
+}
+TEST_ADD (project_name_notifications);
+
+static void
 server_name()
 {
   Server &server = Server::instance();
