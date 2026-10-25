@@ -491,6 +491,46 @@ track_name()
 TEST_ADD (track_name);
 
 static void
+plugin_name()
+{
+  ProjectP project = Server::instance().create_project ("PluginNameTest");
+  TrackP track = project->create_track();
+  for (const String &type : { "text", "insert" })
+    {
+      PluginP plugin = track->create_plugin (type);
+      TASSERT (plugin);
+      const String initial = plugin->name();
+      const StringS read_only = plugin->read_only_properties();
+      TASSERT (!std::count (read_only.begin(), read_only.end(), "name"));
+      uint notifications = 0;
+      auto connection = plugin->on_event ("notify:name", [&] (const Event&) { notifications++; });
+      const String project_name = project->name();
+      project->ungroup_undo();
+      project->name (project_name + " marker");
+      plugin->name ("");
+      TASSERT (plugin->name() == initial && notifications == 0);
+      project->undo();
+      TASSERT (project->name() == project_name);
+      project->redo();
+      TASSERT (project->name() == project_name + " marker");
+      plugin->name ("New Name");
+      TASSERT (plugin->name() == "New Name" && notifications > 0);
+      notifications = 0;
+      plugin->name ("");
+      TASSERT (plugin->name() == initial && notifications > 0);
+    }
+  PluginP fixed = track->create_plugin ("4osc");
+  TASSERT (fixed);
+  const String initial = fixed->name();
+  const StringS read_only = fixed->read_only_properties();
+  TASSERT (std::count (read_only.begin(), read_only.end(), "name"));
+  fixed->name ("Ignored Name");
+  TASSERT (fixed->name() == initial);
+  project->discard();
+}
+TEST_ADD (plugin_name);
+
+static void
 server_name()
 {
   Server &server = Server::instance();

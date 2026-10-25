@@ -28,7 +28,7 @@ public:
   valueTreePropertyChanged (juce::ValueTree &tree, const juce::Identifier &property) override
   {
     assert_return (tree == plugin_state_);
-    if (property == tracktion::engine::IDs::name)
+    if (property == tracktion::engine::IDs::name || property == tracktion::engine::IDs::title)
       aseplugin_.emit_notify ("name");
     else if (property == tracktion::engine::IDs::enabled)
       aseplugin_.emit_notify ("enabled");
@@ -42,6 +42,16 @@ public:
 };
 
 // == PluginImpl ==
+static juce::CachedValue<juce::String>*
+trkn_plugin_name (te::Plugin *plugin)
+{
+  if (auto text = dynamic_cast<te::TextPlugin*> (plugin))
+    return &text->textTitle;
+  if (auto insert = dynamic_cast<te::InsertPlugin*> (plugin))
+    return &insert->name;
+  return nullptr;
+}
+
 PluginImplP
 PluginImpl::from_trkn (tracktion::Plugin &p)
 {
@@ -75,9 +85,14 @@ PluginImpl::name() const
 }
 
 void
-PluginImpl::name (const std::string&)
+PluginImpl::name (const std::string &n)
 {
-  // Tracktion plugins have a fixed name
+  const juce::String new_name (n);
+  if (auto name = trkn_plugin_name (plugin_.get()); name && name->get() != new_name)
+    {
+      plugin_->getUndoManager()->beginNewTransaction ("Set Plugin Name");
+      *name = new_name;
+    }
 }
 
 String
@@ -131,7 +146,7 @@ PluginImpl::device_info()
 StringS
 PluginImpl::read_only_properties () const
 {
-  return { "name" };
+  return trkn_plugin_name (plugin_.get()) ? StringS {} : StringS { "name" };
 }
 
 void

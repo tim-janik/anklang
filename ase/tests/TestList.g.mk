@@ -36,6 +36,7 @@ ASE_TEST_LIST := \
   nested_cotask_test \
   path_tests \
   plugin_creation \
+  plugin_name \
   project_creation \
   project_length \
   project_playback_state \
