@@ -675,22 +675,14 @@ ProjectImpl::save_project (const String &utf8filename, bool collect)
   return error;
 }
 
-Error
-ProjectImpl::snapshot_project (String &json)
+// All Edit XML is written here, so grep patterns match saved files: `\n` line ends, no wrapping
+static String
+edit_xml (const juce::ValueTree &state)
 {
-  assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
-  // writer setup
-  PStorage storage (&storage_); // storage_ = &storage;
-  storage_->writer_cachedir = anklang_cachedir_create();
-  if (storage_->writer_cachedir.empty() || !Path::check (storage_->writer_cachedir, "d"))
-    return Error::NO_PROJECT_DIR;
-  storage_->anklang_dir = storage_->writer_cachedir;
-  storage_->asset_hashes.clear();
-  // serialize Project (TODO: use tracktion_engine saving & loading)
-  json = "{}";
-  // cleanup
-  anklang_cachedir_cleanup (storage_->writer_cachedir);
-  return Error::NONE;
+  juce::XmlElement::TextFormat format;
+  format.newLineChars = "\n";
+  format.lineWrapLength = std::numeric_limits<int>::max();
+  return state.toXmlString (format).toStdString();
 }
 
 String
@@ -853,15 +845,12 @@ ProjectImpl::loader_resolve (const String &hexhash)
 }
 
 String
-ProjectImpl::match_serialized (const String &regex, int group)
+ProjectImpl::grep_serialized (const String &regex, int group)
 {
-  String json;
-  Error error = snapshot_project (json);
-  if (!!error) {
-    warning ("Project: failed to serialize project: %s\n", ase_error_blurb (error));
-    return "";
-  }
-  return Re::grep (regex, json, group);
+  return_unless (!!edit_, "");
+  for (te::Plugin *plugin : te::getAllPlugins (*edit_, true))
+    edit_->flushPluginStateIfNeeded (*plugin);
+  return Re::grep (regex, edit_xml (edit_->state), group);
 }
 
 UndoScope::UndoScope (ProjectImplP projectp, const String &scopename) :

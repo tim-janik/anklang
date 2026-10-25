@@ -943,8 +943,8 @@ export class Project // Ase::Project
   { return this.$get ("length", 0.0) as number; }
   set length (v: number)
   { this.$set ("length", v); }
-  match_serialized (arg1: string, arg2: number): Promise<string>
-  { return this.$rpc ("match_serialized", [this, arg1, arg2]); }
+  grep_serialized (arg1: string, arg2: number): Promise<string>
+  { return this.$rpc ("grep_serialized", [this, arg1, arg2]); }
 };
 Jsonipc.classes["Ase::Project"] = Project;
 

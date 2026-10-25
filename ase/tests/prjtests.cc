@@ -267,6 +267,25 @@ project_tempo_values()
 TEST_ADD (project_tempo_values);
 
 static void
+project_grep_serialized()
+{
+  ProjectP project = ProjectImpl::create ("GrepTest");
+  TrackP track = project->create_track();
+  track->name ("Grep Track");
+  project->bpm (133);
+  ClipP clip = track->create_midi_clip ("Grep Clip", 0, 4);
+  clip->all_notes ({ ClipNote { .note_number = 61, .length_beats = 1, .velocity = 99 } });
+  TASSERT (project->grep_serialized ("<TRACK\\b[^>]*\\bname=\"(Grep Track)\"", 1) == "Grep Track");
+  TASSERT (project->grep_serialized ("<TEMPO\\b[^>]*\\bbpm=\"([^\"]*)\"", 1) == "133.0");
+  TASSERT (project->grep_serialized ("<NOTE\\b[^>]*\\bp=\"([^\"]*)\"", 1) == "61");
+  // Long start tags stay on one line, with `\n` line ends
+  TASSERT (project->grep_serialized ("<MIDICLIP\\b[^>\\n]*>") != "");
+  TASSERT (project->grep_serialized ("\r") == "");
+  project->discard();
+}
+TEST_ADD (project_grep_serialized);
+
+static void
 project_length()
 {
   ProjectP project = ProjectImpl::create ("LengthTest");
