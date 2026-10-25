@@ -33,6 +33,7 @@ ASE_TEST_LIST := \
   member_tmpl_tests \
   memory_cstring_tests \
   mpmc_stack_test \
+  name_undo_redo \
   nested_cotask_test \
   path_tests \
   plugin_creation \

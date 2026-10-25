@@ -585,6 +585,54 @@ project_name_notifications()
 TEST_ADD (project_name_notifications);
 
 static void
+name_undo_redo()
+{
+  ProjectP project = Server::instance().create_project ("NameUndoTest");
+  TrackP track = project->create_track();
+  const std::vector<std::pair<GadgetP,String>> writable = {
+    { project, "" },
+    { track, "Track 1" },
+    { track->create_midi_clip ("Midi", 0, 1), "" },
+    { track->create_audio_clip ("Audio", 2, 1), "" },
+    { track->create_plugin ("text"), "Text Plugin" },
+    { track->create_plugin ("insert"), "Insert Plugin" },
+  };
+  for (const auto &[gadget, default_name] : writable)
+    {
+      TASSERT (gadget);
+      const String initial = gadget->name();
+      uint notifications = 0;
+      auto connection = gadget->on_event ("notify:name", [&] (const Event&) { notifications++; });
+      auto check = [&] (const String &expected) {
+        TASSERT (gadget->name() == expected && notifications > 0);
+        notifications = 0;
+      };
+      gadget->name ("First Name");
+      check ("First Name");
+      gadget->name ("Second Name");
+      check ("Second Name");
+      gadget->name ("Second Name");
+      TASSERT (notifications == 0);
+      project->undo();
+      check ("First Name");
+      project->undo();
+      check (initial);
+      project->redo();
+      check ("First Name");
+      project->redo();
+      check ("Second Name");
+      gadget->name ("");
+      check (default_name);
+      project->undo();
+      check ("Second Name");
+      project->redo();
+      check (default_name);
+    }
+  project->discard();
+}
+TEST_ADD (name_undo_redo);
+
+static void
 server_name()
 {
   Server &server = Server::instance();

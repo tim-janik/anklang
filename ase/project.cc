@@ -369,6 +369,7 @@ ProjectImpl::name (const std::string &nm)
 {
   return_unless (!!edit_);
   // tracktion_engine::getProjectItemForEdit (*edit_)->setName (nm, tracktion_engine::ProjectItem::SetNameMode::doDefault);
+  edit_->getUndoManager().beginNewTransaction ("Set Project Name");
   edit_->state.setProperty (tracktion_engine::IDs::name, juce::String (nm), &edit_->getUndoManager());
 }
 

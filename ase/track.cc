@@ -182,7 +182,10 @@ TrackImpl::name (const std::string &n)
 {
   if (auto trackp = track_.get())
     if (!trkn_fixed_name (*trackp))
-      trackp->setName (juce::String (n));
+      {
+        trackp->edit.getUndoManager().beginNewTransaction ("Set Track Name");
+        trackp->setName (juce::String (n));
+      }
 }
 
 ProjectImpl*
