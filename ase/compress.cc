@@ -48,11 +48,11 @@ static struct { size_t level, size; } const zstd_adaptive_level[] = {
   {  4, ~size_t (0) },  // acceptable fast compression
 }; // each level + size combination should take roughly the same time
 
-static int
-guess_zstd_level (size_t input_size)
+int
+zstd_guess_level (size_t input_size)
 {
   uint zal = 0;
-  while (zstd_adaptive_level[zal].size > input_size)
+  while (input_size > zstd_adaptive_level[zal].size)
     zal++;
   return zstd_adaptive_level[zal].level;
 }
@@ -69,7 +69,7 @@ zstd_compress (const void *src, size_t src_size, int level)
   const size_t maxosize = ZSTD_compressBound (src_size);
   String data;
   data.resize (maxosize);
-  const size_t osize = ZSTD_compress (&data[0], data.size(), src, src_size, level ? level : guess_zstd_level (src_size));
+  const size_t osize = ZSTD_compress (&data[0], data.size(), src, src_size, level ? level : zstd_guess_level (src_size));
   if (ZSTD_isError (osize))
     {
       warning ("zstd compression failed (input=%zu): %s", src_size, ZSTD_getErrorName (osize));

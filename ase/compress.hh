@@ -37,6 +37,7 @@ String  blake3_hash_file   (const String &filename);
 String  blake3_hash_string (const String &input);
 
 bool    is_zstd          (const String &input);
+int     zstd_guess_level (size_t input_size);
 String  zstd_compress    (const String &input, int level = 0);
 String  zstd_compress    (const void *src, size_t src_size, int level = 0);
 String  zstd_uncompress  (const String &input);
