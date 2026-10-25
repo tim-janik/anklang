@@ -493,7 +493,15 @@ TEST_ADD (track_name);
 static void
 server_name()
 {
-  TASSERT (Server::instance().name().empty() && Server::instance().read_only_properties() == StringS { "name" });
+  Server &server = Server::instance();
+  TASSERT (server.name().empty() && server.read_only_properties() == StringS { "name" });
+  uint notifications = 0;
+  auto connection = server.on_event ("notify:name", [&] (const Event&) { notifications++; });
+  for (const String &name : { "Renamed Server", "" })
+    {
+      server.name (name);
+      TASSERT (server.name().empty() && notifications == 0);
+    }
 }
 TEST_ADD (server_name);
 
