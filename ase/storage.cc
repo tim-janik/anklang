@@ -249,6 +249,7 @@ public:
   store_file_data (const String &filename, const String &buffer, bool compress, int64_t epoch_seconds)
   {
     assert_return (mz_zip_writer_is_open (writer) == MZ_OK, Error::INTERNAL);
+    mz_zip_writer_set_compress_level (writer, zstd_guess_level (buffer.size()));
     const uint32 attrib = S_IFREG | 0664;
     const time_t fdate = epoch_seconds;
     mz_zip_file file_info = {
@@ -284,6 +285,8 @@ public:
     mz_zip_writer_set_follow_links (writer, follow_links);
     if (maycompress)
       maycompress = !is_compressed (Path::stringread (ondiskpath, 1024));
+    if (maycompress)
+      mz_zip_writer_set_compress_level (writer, zstd_guess_level (Path::file_size (ondiskpath)));
     if (!maycompress)
       mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_STORE);
     int32_t mzerr = mz_zip_writer_add_file (writer, ondiskpath.c_str(), filename.c_str());

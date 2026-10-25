@@ -30,7 +30,7 @@ storage_roundtrip()
   const String dir = anklang_cachedir_create();
   TASSERT (!dir.empty());
   const String archive = Path::join (dir, "test.anklang");
-  const String text = String (4096, 'x') + "\n";
+  const String text = String (1024 * 1024, 'x') + "\n";
   const String binary ("a\0b", 3);
   const String compressed = zstd_compress (text);
   const String text_file = Path::join (dir, "text");
