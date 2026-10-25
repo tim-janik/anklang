@@ -14,18 +14,20 @@ namespace Ase {
 // == ClipStateListener ==
 class ClipImpl::ClipStateListener : public juce::ValueTree::Listener {
   ClipImpl &aseclip_;
-  juce::ValueTree clip_state_;
+  juce::ValueTree clip_state_, tempo_state_;
   // Handles refer to the Edit note trees, including notes held by undo.
   std::map<int32, juce::ValueTree> note_states_;
   int32 next_note_id_ = 0;
 public:
   ClipStateListener (ClipImpl &aseclip) :
-    aseclip_ (aseclip), clip_state_ (aseclip_.clip_->state)
+    aseclip_ (aseclip), clip_state_ (aseclip_.clip_->state), tempo_state_ (aseclip_.clip_->edit.tempoSequence.getState())
   {
     clip_state_.addListener (this);
+    tempo_state_.addListener (this);
   }
   ~ClipStateListener() override
   {
+    tempo_state_.removeListener (this);
     clip_state_.removeListener (this);
   }
   void
@@ -60,6 +62,12 @@ public:
   void
   valueTreePropertyChanged (juce::ValueTree &tree, const juce::Identifier &property) override
   {
+    if (tree == tempo_state_ || tree.isAChildOf (tempo_state_))
+      {
+        // Tempo and time signature changes can move clip beats
+        aseclip_.emit_notify ("start_beat");
+        aseclip_.emit_notify ("end_beat");
+      }
     return_unless (tree == clip_state_);
     if (property == tracktion::engine::IDs::name)
       aseclip_.emit_notify ("name");
@@ -118,6 +126,20 @@ ClipImpl::clip_index () const
     if (auto timpl = find_ase_obj<TrackImpl> (c->getTrack()))
       return timpl->clip_index (*this);
   return -1;
+}
+
+String
+ClipImpl::name () const
+{
+  return clip_.get() ? clip_->getName().toStdString() : "";
+}
+
+void
+ClipImpl::name (const std::string &n)
+{
+  return_unless (clip_.get());
+  clip_->edit.getUndoManager().beginNewTransaction ("Set Clip Name");
+  clip_->setName (juce::String (n));
 }
 
 ClipPosition
@@ -254,12 +276,19 @@ ClipImpl::pan () const
 void
 ClipImpl::pan (float panval)
 {
-  return_unless (clip_.get());
-  auto &um = clip_->edit.getUndoManager();
-  um.beginNewTransaction ("Set Clip Pan");
   auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
-  if (aclip)
-    aclip->setPan (panval);
+  return_unless (aclip); // MIDI clips have no pan
+  clip_->edit.getUndoManager().beginNewTransaction ("Set Clip Pan");
+  aclip->setPan (panval);
+}
+
+StringS
+ClipImpl::read_only_properties () const
+{
+  StringS props = { "end_beat", "start_beat" };
+  if (!dynamic_cast<te::AudioClipBase*> (clip_.get()))
+    props.push_back ("pan");
+  return props;
 }
 
 TelemetryFieldS
