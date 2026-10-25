@@ -903,8 +903,10 @@ export class Project // Ase::Project
   { this.$set ("is_playing", v); }
   create_track (): Promise<Track>
   { return this.$rpc ("create_track", [this]); }
-  all_tracks (): Promise<Track[]>
-  { return this.$rpc ("all_tracks", [this]); }
+  get all_tracks (): Track[]
+  { return this.$get ("all_tracks", []) as Track[]; }
+  set all_tracks (v: Track[])
+  { this.$set ("all_tracks", v); }
   master_track (): Promise<Track>
   { return this.$rpc ("master_track", [this]); }
   save_project (arg1: string, arg2: boolean): Promise<Error>
@@ -927,8 +929,10 @@ export class Project // Ase::Project
   { return this.$rpc ("redo", [this]); }
   can_redo (): Promise<boolean>
   { return this.$rpc ("can_redo", [this]); }
-  length (): Promise<number>
-  { return this.$rpc ("length", [this]); }
+  get length (): number
+  { return this.$get ("length", 0.0) as number; }
+  set length (v: number)
+  { this.$set ("length", v); }
   match_serialized (arg1: string, arg2: number): Promise<string>
   { return this.$rpc ("match_serialized", [this, arg1, arg2]); }
 };

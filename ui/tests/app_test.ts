@@ -52,7 +52,7 @@ async function test_activation_piano_roll (): Promise<boolean>
   if (!project)
     throw new Error ('create_project failed');
   try {
-    const tracks = await project.all_tracks();
+    const tracks = await project.$refetch (() => project.all_tracks);
     let track: any = null;
     for (const candidate of tracks)
       if (!await candidate.is_control_track()) {
@@ -118,11 +118,11 @@ async function test_overlapping_activation (): Promise<boolean>
   const first = await Ase.server.create_project ('EarlierActivation');
   const second = await Ase.server.create_project ('LaterActivation');
   try {
-    const first_tracks = await first.all_tracks();
+    const first_tracks = await first.$refetch (() => first.all_tracks);
     const editable = [];
     for (const track of first_tracks)
       if (!await track.is_control_track()) editable.push (track);
-    const second_tracks = await second.all_tracks();
+    const second_tracks = await second.$refetch (() => second.all_tracks);
     let second_track;
     for (const track of second_tracks)
       if (!await track.is_control_track()) { second_track = track; break; }
@@ -148,14 +148,14 @@ async function test_overlapping_activation (): Promise<boolean>
       });
       const delayed_project = new Proxy (first, {
         get (target, key) {
-          if (key === 'all_tracks')
-            return async () => {
-              if (delayed_method === 'all_tracks') {
-                entered();
-                await gate;
-              }
-              return [delayed_track];
+          if (key === '$refetch' && delayed_method === 'all_tracks')
+            return async cb => {
+              entered();
+              await gate;
+              return target.$refetch (cb);
             };
+          if (key === 'all_tracks')
+            return [delayed_track];
           return Reflect.get (target, key);
         },
       });

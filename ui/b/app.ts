@@ -94,7 +94,7 @@ export class AppClass {
       throw Error (`App: invalid Ase.Project: ${project}`);
     const generation = ++this.activation_generation;
     // Select the first editable track; fall back to the first track
-    const tracks = await project.all_tracks();
+    const tracks = await project.$refetch (() => project.all_tracks);
     if (generation !== this.activation_generation) return;
     let current_track = null;
     for (const t of tracks) {

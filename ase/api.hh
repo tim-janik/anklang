@@ -338,7 +338,8 @@ public:
   virtual bool            is_playing     () const = 0; ///< Check whether a project is currently playing (song sequencing).
   virtual void            is_playing     (bool) = 0;   ///< Set whether a project is currently playing (song sequencing).
   virtual TrackP          create_track   () = 0;       ///< Create and append a new Track.
-  virtual TrackS          all_tracks     () = 0;       ///< List all tracks of the project.
+  virtual TrackS          all_tracks     () const = 0; ///< List all tracks, changes on `notify:all_tracks`.
+  virtual void            all_tracks     (const TrackS &) = 0; ///< Read-only, assignments warn.
   virtual TrackP          master_track   () = 0;       ///< Retrieve the master track.
   virtual Error           save_project   (const String &utf8filename, bool collect) = 0; ///< Store Project and collect external files.
   virtual String          saved_filename () = 0;       ///< Retrieve UTF-8 filename for save or from load.
@@ -350,7 +351,8 @@ public:
   virtual bool            can_undo       () = 0;       ///< Check if any undo steps have been recorded.
   virtual void            redo           () = 0;       ///< Redo the last undo modification.
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
-  virtual double          length         () const = 0; ///< Get the end time of the last clip in seconds.
+  virtual double          length         () const = 0; ///< End time of the last clip in seconds, changes on `notify:length`.
+  virtual void            length         (double) = 0; ///< Read-only, assignments warn.
   virtual String          match_serialized (const String &regex,
                                             int group = 0) = 0; ///< Match `regex` against the serialized project state.
   static ProjectP         last_project   ();

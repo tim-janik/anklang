@@ -151,9 +151,8 @@ export function TrackView (props)
     if (uri == 'delete-track')
       {
 	const del_track = props.track;
-	let tracks = project.all_tracks();
+	const tracks = project.all_tracks.slice();
 	del_track.remove_self ();
-	tracks = await tracks;
 	const index = Util.array_index_equals (tracks, del_track);
 	tracks.splice (index, 1);
 	if (index < tracks.length) // false if deleting Master

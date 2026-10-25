@@ -11,8 +11,7 @@ import * as Dom from '../dom';
 function make_fake_project (create_track = () => {})
 {
   return {
-    all_tracks: async () => [],
-    on: () => () => {},
+    all_tracks: [],
     create_track,
   };
 }
@@ -62,6 +61,39 @@ async function test_shell_tracklist_forwarding (): Promise<boolean>
   return true;
 }
 sub_tests.push (['tracklist_forwarding', test_shell_tracklist_forwarding]);
+
+async function test_shell_tracklist_updates (): Promise<boolean>
+{
+  const project = await Ase.server.create_project ('TrackListTest');
+  const initial = (await project.$refetch (() => project.all_tracks)).length;
+  const container = document.createElement ('div');
+  document.body.appendChild (container);
+  const dispose = render (() => createComponent (TrackList, { project }), container);
+  const expect_tracks = async (count: number) => {
+    await project.$refetch (() => project.all_tracks);
+    await Dom.ui_next_frame();
+    if (container.querySelectorAll ('.b-trackview').length !== count)
+      throw new Error (`TrackList did not show ${count} tracks`);
+  };
+  try {
+    await expect_tracks (initial);
+    const track = await project.create_track();
+    await expect_tracks (initial + 1);
+    await project.ungroup_undo();
+    await track.remove_self();
+    await expect_tracks (initial);
+    await project.undo();
+    await expect_tracks (initial + 1);
+    await project.redo();
+    await expect_tracks (initial);
+  } finally {
+    dispose();
+    container.remove();
+    await project.discard();
+  }
+  return true;
+}
+sub_tests.push (['tracklist_updates', test_shell_tracklist_updates]);
 
 /// Test that DevicePanel forwards host attributes (class) to its root element.
 async function test_shell_devicepanel_forwarding (): Promise<boolean>

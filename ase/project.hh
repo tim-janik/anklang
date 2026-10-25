@@ -35,7 +35,7 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
 protected:
   explicit            ProjectImpl     ();
   virtual            ~ProjectImpl     ();
-  void                foreach_track   (const std::function<bool(Track&,int)> &cb);
+  void                foreach_track   (const std::function<bool(Track&,int)> &cb) const;
   Error               snapshot_project (String &json);
   String              match_serialized (const String &regex, int group) override;
   void                deactivate_edit ();
@@ -56,6 +56,8 @@ public:
   void                 redo              () override;
   bool                 can_redo          () override;
   double               length           () const override;
+  void                 length           (double) override;
+  StringS              read_only_properties () const override;
   void                 group_undo        (const String &undoname) override;
   void                 ungroup_undo      () override;
   void                 clear_undo        ();
@@ -67,7 +69,8 @@ public:
   void                 is_playing        (bool play) override;
   TrackP               create_track      () override;
   void                 remove_self       () override;
-  TrackS               all_tracks        () override;
+  TrackS               all_tracks        () const override;
+  void                 all_tracks        (const TrackS &) override;
   TrackP               master_track      () override;
   Error                load_project      (const String &utf8filename) override;
   StreamReaderP        load_blob         (const String &fspath);
