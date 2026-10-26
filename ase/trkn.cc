@@ -30,6 +30,11 @@ struct EngineBehaviour : te::EngineBehaviour {
   bool autoInitialiseDeviceManager () override          { return !nodevs; }
 };
 
+struct PropertyStorage : te::PropertyStorage {
+  using te::PropertyStorage::PropertyStorage;
+  juce::String getUserName () override          { return "Anklang-" + String (ase_version()); } // Edit::flushState() saves it as modifiedBy
+};
+
 struct TrknApp : juce::JUCEApplication {
   std::unique_ptr<tracktion::Engine> engine;
   ~TrknApp()
@@ -48,7 +53,8 @@ struct TrknApp : juce::JUCEApplication {
   start_engine (std::unique_ptr<EngineBehaviour> engine_behaviour)
   {
     assert_return (!engine);
-    engine = std::make_unique<tracktion::Engine> (Ase::application_name(), std::make_unique<tracktion::UIBehaviour>(), std::move (engine_behaviour));
+    engine = std::make_unique<tracktion::Engine> (std::make_unique<PropertyStorage> (Ase::application_name()),
+                                                  std::make_unique<tracktion::UIBehaviour>(), std::move (engine_behaviour));
     auto &deviceManager = engine->getDeviceManager();
     // deviceManager.initialise (0, 2);         // 0 inputs, 2 stereo outputs
     if (engine->getEngineBehaviour().autoInitialiseDeviceManager())
@@ -244,3 +250,16 @@ loopAroundClip (ClipType &clip)
 } // EngineHelpers
 
 } // Ase
+
+#include "testing.hh"
+
+TEST_INTEGRITY (trkn_no_user_name);
+/// Saved Edits record the application version instead of a login name.
+static void
+trkn_no_user_name()
+{
+  te::Edit edit (*Ase::trkn_engine(), te::Edit::forEditing);
+  edit.flushState();
+  const Ase::String expected = "Anklang-" + Ase::String (Ase::ase_version());
+  TASSERT (edit.state[te::IDs::modifiedBy].toString().toStdString() == expected);
+}

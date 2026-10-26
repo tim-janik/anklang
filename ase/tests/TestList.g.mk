@@ -88,6 +88,7 @@ ASE_TEST_LIST := \
   track_outlives_project \
   track_parameter_values \
   track_volume_pan \
+  trkn_no_user_name \
   unicode_displayfs_tests \
   unicode_tests \
   utf8_codepoint_bench \
