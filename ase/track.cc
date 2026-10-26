@@ -352,8 +352,7 @@ TrackImpl::launcher_clips() const
 void
 TrackImpl::launcher_clips (const ClipS &)
 {
-  // NOP setter: assignments are ignored; clip add/remove is driven by the
-  // backend and emits `notify:launcher_clips` via TrackStateListener.
+  warning ("Track.launcher_clips is read-only");
 }
 
 ClipS

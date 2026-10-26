@@ -294,7 +294,7 @@ public:
   virtual float           pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
   virtual void            pan                 (float pan) = 0;       ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () const = 0;          ///< Retrieve the list of clips that can be directly played; changes on `notify:launcher_clips`.
-  virtual void            launcher_clips      (const ClipS &) = 0;   ///< NOP setter, assignments are ignored.
+  virtual void            launcher_clips      (const ClipS &) = 0;   ///< Read-only, assignments warn.
   virtual ClipS           all_clips           () const = 0;          ///< List all clips of this track, changes on `notify:all_clips`.
   virtual void            all_clips           (const ClipS &) = 0;   ///< Read-only, assignments warn.
   virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
@@ -385,7 +385,7 @@ public:
   virtual Resource  folder          () const = 0;                       ///< Describe current folder.
   virtual void      folder          (const Resource &newfolder) = 0;
   virtual ResourceS entries         () const = 0;                       ///< List entries of a folder.
-  virtual void      entries         (const ResourceS &newentries) = 0;
+  virtual void      entries         (const ResourceS &newentries) = 0; ///< Read-only, assignments warn.
   using String2 = std::pair<String,String>;
   virtual String2   assign          (const String &utf8path,
                                      bool existingfile = false) = 0;    ///< Move to a different path.

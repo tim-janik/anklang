@@ -123,7 +123,7 @@ FileCrawler::entries() const
 void
 FileCrawler::entries (const ResourceS &newentries)
 {
-  // assignment not supported for FileCrawler
+  warning ("ResourceCrawler.entries is read-only");
 }
 
 /// Open a new folder and make it the current folder.
