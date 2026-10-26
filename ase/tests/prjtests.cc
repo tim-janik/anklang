@@ -2,10 +2,29 @@
 #include <ase/project.hh>
 #include <ase/clip.hh>
 #include <ase/track.hh>
+#include <ase/path.hh>
+#include <ase/platform.hh>
+#include <ase/storage.hh>
 #include <ase/testing.hh>
+#include <unistd.h>
+#include <glib.h>
 
 namespace { // Anon
 using namespace Ase;
+
+struct TestEnvironment {
+  String key, previous;
+  bool existed;
+  TestEnvironment (const String &name, const String &value) :
+    key (name), previous (getenv (name.c_str()) ?: ""), existed (getenv (name.c_str()))
+  {
+    TASSERT (setenv (key.c_str(), value.c_str(), 1) == 0);
+  }
+  ~TestEnvironment()
+  {
+    TASSERT ((existed ? setenv (key.c_str(), previous.c_str(), 1) : unsetenv (key.c_str())) == 0);
+  }
+};
 
 static void
 project_creation()
@@ -83,6 +102,116 @@ project_creation()
   project2->discard();
 }
 TEST_ADD (project_creation);
+
+static void
+project_dir_lifetime()
+{
+  ProjectImplP project = ProjectImpl::create ("ProjectDir");
+  TASSERT (project->project_dir (false).empty());
+  String dir = project->project_dir (true);
+  if (dir.empty())
+    {
+      TASSERT (project->project_dir (false).empty());
+      dir = project->project_dir (true);
+    }
+  TASSERT (Path::check (Path::join (dir, ".anklang.project"), "f"));
+  TASSERT (project->project_dir (false) == dir);
+  const String snapshot = Path::join (dir, "autosave/snapshot");
+  TASSERT (Path::stringwrite (snapshot, "unsaved state", true));
+  project->discard();
+  project.reset();
+  TASSERT (Path::stringread (snapshot) == "unsaved state");
+  TASSERT (Path::check (Path::join (dir, ".anklang.project"), "f"));
+}
+TEST_ADD (project_dir_lifetime);
+
+static void
+project_dir_exit_child()
+{
+  ProjectImplP project = ProjectImpl::create ("Exit");
+  const String dir = project->project_dir (true);
+  TASSERT (!dir.empty());
+  TASSERT (Path::stringwrite (Path::join (dir, "autosave/snapshot"), "exit state", true));
+  project->discard();
+}
+TEST_ADD (project_dir_exit_child);
+
+static void
+project_dir_exit()
+{
+  const String root = anklang_cachedir_create();
+  TASSERT (!root.empty());
+  const String projects = Path::join (root, "projects");
+  StringS args = { "env", "ANKLANG_PROJECTS_DIR=" + projects, executable_path(),
+                   "--norc", "--no-devices", "--test=project_dir_exit_child" };
+  std::vector<char*> argv;
+  for (String &arg : args)
+    argv.push_back (arg.data());
+  argv.push_back (nullptr);
+  int status = -1;
+  TASSERT (g_spawn_sync (nullptr, argv.data(), nullptr, G_SPAWN_SEARCH_PATH, nullptr, nullptr, nullptr, nullptr, &status, nullptr));
+  TASSERT (status == 0);
+  TASSERT (Path::stringread (Path::join (projects, "Exit/autosave/snapshot")) == "exit state");
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_dir_exit);
+
+static void
+project_dir_roots()
+{
+  const String root = anklang_cachedir_create();
+  TASSERT (!root.empty());
+  PropertyP setting = Server::instance().access_preference ("anklang-projects-dir");
+  TASSERT (setting);
+  const Value previous = setting->value();
+  {
+    TestEnvironment projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "env"));
+    setting->value (Path::join (root, "setting"));
+    const StringS expected = { "env", "setting" };
+    for (size_t i = 0; i < expected.size(); i++)
+      {
+        ProjectImplP project = ProjectImpl::create ("Roots");
+        TASSERT (project->project_dir (false).empty());
+        const String dir = project->project_dir (true);
+        TASSERT (dir == Path::join (root, expected[i], "Roots"));
+        TASSERT (setenv ("ANKLANG_PROJECTS_DIR", "", 1) == 0);
+        project->name ("Renamed");
+        TASSERT (project->project_dir (true) == dir);
+        project->discard();
+      }
+  }
+  setting->value (previous);
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_dir_roots);
+
+static void
+project_dir_names()
+{
+  const String root = anklang_cachedir_create();
+  TASSERT (!root.empty());
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", root);
+  for (const String &suffix : StringS { "", "(1)", "(2)" })
+    {
+      ProjectImplP project = ProjectImpl::create ("Same Name");
+      TASSERT (project->project_dir (true) == Path::join (root, "Same Name" + suffix));
+      project->discard();
+    }
+  const String blocked = Path::join (root, "Blocked");
+  TASSERT (Path::stringwrite (blocked, "keep this file"));
+  ProjectImplP project = ProjectImpl::create ("Blocked");
+  TASSERT (project->project_dir (true) == blocked + "(1)");
+  TASSERT (Path::stringread (blocked) == "keep this file");
+  project->discard();
+  for (const String &name : StringS { "", ".", "..", "../escape", "a/b\\c" })
+    {
+      ProjectImplP project = ProjectImpl::create (name);
+      TASSERT (Path::dircontains (root, project->project_dir (true)));
+      project->discard();
+    }
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_dir_names);
 
 static void
 project_tempo_values()

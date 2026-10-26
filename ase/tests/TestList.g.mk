@@ -43,6 +43,11 @@ ASE_TEST_LIST := \
   plugin_creation \
   plugin_name \
   project_creation \
+  project_dir_exit \
+  project_dir_exit_child \
+  project_dir_lifetime \
+  project_dir_names \
+  project_dir_roots \
   project_length \
   project_name_notifications \
   project_playback_state \
