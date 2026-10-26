@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include "storage.hh"
+#include "atquit.hh"
 #include "path.hh"
 #include "utils.hh"
 #include "api.hh"
@@ -11,7 +12,7 @@
 #include <stdlib.h>     // mkdtemp
 #include <sys/stat.h>   // mkdir
 #include <unistd.h>     // rmdir
-#include <fcntl.h>      // O_EXCL
+#include <fcntl.h>
 #include <signal.h>
 #include <filesystem>
 
@@ -84,22 +85,6 @@ anklang_cachedir_base (bool createbase = false)
   return "";
 }
 
-static std::vector<String> cachedirs_list;
-static std::mutex               cachedirs_mutex;
-
-/// Clean temporary caches of this process.
-static void
-atexit_clean_cachedirs()
-{
-  std::lock_guard<std::mutex> locker (cachedirs_mutex);
-  while (cachedirs_list.size())
-    {
-      const String dir = cachedirs_list.back();
-      cachedirs_list.pop_back();
-      Path::rmrf (dir);
-    }
-}
-
 /// Create exclusive cache directory for this process' runtime.
 String
 anklang_cachedir_create()
@@ -119,11 +104,7 @@ anklang_cachedir_create()
       if (guardfd >= 0 && Path::stringwrite (guardfile, guardstring))
         {
           close (guardfd);
-          std::lock_guard<std::mutex> locker (cachedirs_mutex);
-          cachedirs_list.push_back (cachedir);
-          static bool needatexit = true;
-          if (needatexit)
-            needatexit = std::atexit (atexit_clean_cachedirs);
+          atquit_add_removal (cachedir);
           SDEBUG ("create: %s: %s", guardfile, strerror (0));
           return cachedir;
         }
@@ -153,6 +134,7 @@ anklang_cachedir_cleanup (const String &cachedir)
             Path::rmrf (cachedir);
         }
     }
+  atquit_del_removal (cachedir);
 }
 
 /// Clean stale cache directories from past runtimes, may be called from any thread.
