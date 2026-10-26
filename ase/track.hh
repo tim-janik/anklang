@@ -47,6 +47,8 @@ public:
   StringS         read_only_properties () const override;
   ClipS           launcher_clips    () const override;
   void            launcher_clips    (const ClipS &) override;
+  ClipS           all_clips         () const override;
+  void            all_clips         (const ClipS &) override;
   DeviceP         access_device     () override;
   MonitorP        create_monitor    (int32 ochannel) override;
   ssize_t         clip_index        (const ClipImpl &clip) const;

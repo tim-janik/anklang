@@ -91,24 +91,30 @@ public:
     asetrack_.update_telemetry();
   }
   void
+  notify_clips ()
+  {
+    asetrack_.emit_notify ("launcher_clips");
+    asetrack_.emit_notify ("all_clips");
+  }
+  void
   valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
   {
     if (parent == track_state_ && te::Clip::isClipState (child))
-      asetrack_.emit_notify ("launcher_clips");
+      notify_clips();
   }
   void
   valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree &child, int) override
   {
     if (parent == track_state_ && te::Clip::isClipState (child))
-      asetrack_.emit_notify ("launcher_clips");
+      notify_clips();
   }
   void valueTreeParentChanged (juce::ValueTree&) override {}
   void
   valueTreeChildOrderChanged (juce::ValueTree &parent, int, int newIndex) override
   {
-    // Reordering clips changes launcher_clips() return order, so emit like add/remove
+    // Reordering clips changes the order of the clip lists, so emit like add/remove
     if (parent == track_state_ && te::Clip::isClipState (parent.getChild (newIndex)))
-      asetrack_.emit_notify ("launcher_clips");
+      notify_clips();
   }
 };
 
@@ -319,7 +325,7 @@ TrackImpl::pan (float pan)
 StringS
 TrackImpl::read_only_properties() const
 {
-  StringS props = { "launcher_clips" };
+  StringS props = { "all_clips", "launcher_clips" };
   auto t = track_.get();
   if (t && trkn_fixed_name (*t))
     props.push_back ("name");
@@ -348,6 +354,22 @@ TrackImpl::launcher_clips (const ClipS &)
 {
   // NOP setter: assignments are ignored; clip add/remove is driven by the
   // backend and emits `notify:launcher_clips` via TrackStateListener.
+}
+
+ClipS
+TrackImpl::all_clips() const
+{
+  ClipS clips;
+  if (auto ct = dynamic_cast<te::ClipTrack*> (track_.get()))
+    for (auto *clip : ct->getClips())
+      clips.push_back (ClipImpl::from_trkn (*clip));
+  return clips;
+}
+
+void
+TrackImpl::all_clips (const ClipS &)
+{
+  warning ("Track.all_clips is read-only");
 }
 
 ssize_t

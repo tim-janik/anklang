@@ -76,6 +76,7 @@ ASE_TEST_LIST := \
   string_tests \
   test_audio_sample_load \
   test_serializable_hierarchy \
+  track_all_clips \
   track_control_classification \
   track_fixed_names \
   track_hidden \

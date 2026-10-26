@@ -295,6 +295,8 @@ public:
   virtual void            pan                 (float pan) = 0;       ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () const = 0;          ///< Retrieve the list of clips that can be directly played; changes on `notify:launcher_clips`.
   virtual void            launcher_clips      (const ClipS &) = 0;   ///< NOP setter, assignments are ignored.
+  virtual ClipS           all_clips           () const = 0;          ///< List all clips of this track, changes on `notify:all_clips`.
+  virtual void            all_clips           (const ClipS &) = 0;   ///< Read-only, assignments warn.
   virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
   virtual ClipP           create_audio_clip   (const String &name, double start, double length) = 0; ///< Create a new audio clip on this track.
   virtual ClipP           insert_wave_clip    (const String &name, const String &utf8filename, double start) = 0; ///< Insert an audio clip at `start` seconds that plays a file.

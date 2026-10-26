@@ -930,7 +930,7 @@ track_insert_wave_clip_invalid_file()
       logging_fatal_warnings = false;
       ClipP clip = track->insert_wave_clip ("Invalid", file, 0);
       logging_fatal_warnings = fatal_warnings;
-      TASSERT (!clip);
+      TASSERT (!clip && track->all_clips().empty());
       StringS files;
       Path::glob (Path::join (samples, "*"), files);
       TASSERT (files == StringS { existing });
@@ -945,6 +945,24 @@ track_insert_wave_clip_invalid_file()
   anklang_cachedir_cleanup (root);
 }
 TEST_ADD (track_insert_wave_clip_invalid_file);
+
+static void
+track_all_clips()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackClips");
+  TrackP track = project->create_track();
+  uint notifications = 0;
+  auto connection = track->on_event ("notify:all_clips", [&] (const Event&) { notifications++; });
+  ClipP midi = track->create_midi_clip ("Midi", 0, 2);
+  ClipP audio = track->create_audio_clip ("Audio", 2, 2);
+  TASSERT (track->all_clips() == ClipS ({ midi, audio }) && notifications >= 2);
+  TASSERT (track->launcher_clips() == ClipS ({ midi }));
+  notifications = 0;
+  audio->remove_self();
+  TASSERT (track->all_clips() == ClipS ({ midi }) && notifications > 0);
+  project->discard();
+}
+TEST_ADD (track_all_clips);
 
 static void
 clip_audio_notes_read_only()
