@@ -260,6 +260,8 @@ public:
   virtual void      volume         (float db) = 0; ///< Set clip volume in dB, emits `notify:volume`.
   virtual float     pan            () const = 0; ///< Get audio clip pan (-1.0 to 1.0), 0 for other clips.
   virtual void      pan            (float pan) = 0; ///< Set audio clip pan (-1.0 to 1.0), emits `notify:pan`, does nothing for other clips.
+  virtual String    original_file  () const = 0; ///< Path of the file an audio clip plays, empty for other clips, changes on `notify:original_file`.
+  virtual void      original_file  (const String&) = 0; ///< Read-only, assignments warn.
   virtual ClipNoteS all_notes      () const = 0;
   virtual void      all_notes      (const ClipNoteS &notes) = 0;
   virtual ClipPosition position    () const = 0;

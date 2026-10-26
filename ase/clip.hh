@@ -35,6 +35,8 @@ public:
   void           volume         (float db) override;
   float          pan            () const override;
   void           pan            (float pan) override;
+  String         original_file  () const override;
+  void           original_file  (const String&) override;
   void           update_telemetry ();
   void           remove_self     () override;
   TelemetryFieldS telemetry      () const override;

@@ -777,6 +777,10 @@ export class Clip // Ase::Clip
   { return this.$get ("pan", 0.0) as number; }
   set pan (v: number)
   { this.$set ("pan", v); }
+  get original_file (): string
+  { return this.$get ("original_file", '') as string; }
+  set original_file (v: string)
+  { this.$set ("original_file", v); }
   get all_notes (): ClipNote[]
   { return this.$get ("all_notes", []) as ClipNote[]; }
   set all_notes (v: ClipNote[])
