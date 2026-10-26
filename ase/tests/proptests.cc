@@ -1,6 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include <ase/project.hh>
 #include <ase/jsonapi.hh>
+#include <ase/platform.hh>
+#include <ase/path.hh>
 #include <ase/testing.hh>
 
 namespace { // Anon
@@ -332,6 +334,14 @@ static const std::map<String,Change> method_checks = {
   } },
   { "Track.create_audio_clip", [] (LoopProject &lp) {
     lp.call ("create_audio_clip", lp.ref ("Track"), "\"New Audio Clip\",8,2");
+  } },
+  { "Track.insert_wave_clip", [] (LoopProject &lp) {
+    const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+    const String file = Path::join (lp.project->project_dir (true), "piano\"\\.ogg");
+    TASSERT (Path::copy_file (sample, file));
+    rapidjson::Document doc;
+    const String path_json = Jsonipc::jsonvalue_to_string (Jsonipc::to_json (file, doc.GetAllocator()));
+    lp.call ("insert_wave_clip", lp.ref ("Track"), "\"Wave Clip\"," + path_json + ",8");
   } },
   { "Track.create_plugin", [] (LoopProject &lp) { lp.call ("create_plugin", lp.ref ("Track"), "\"4osc\""); } },
   { "Gadget.remove_self/Track", [] (LoopProject &lp) { lp.call ("remove_self", lp.ref ("Track")); } },

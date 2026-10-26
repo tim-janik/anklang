@@ -14,6 +14,7 @@
 #include "internal.hh"
 #include "devices/liquidsfz/liquidsfzplugin.hh"
 #include <list>
+#include <unistd.h>
 #include <sys/stat.h>
 
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
@@ -543,6 +544,36 @@ ProjectImpl::project_dir (bool create)
       project_dir_ = dir;
     }
   return project_dir_;
+}
+
+/// Path of `file` in the project dir, files from elsewhere get a link in `samples/`.
+String
+ProjectImpl::link_sample (const String &file, bool &created)
+{
+  created = false;
+  const String dir = project_dir (true);
+  return_unless (!dir.empty(), "");
+  String relative;
+  if (Path::dircontains (dir, file, &relative) && juce::CharPointer_UTF8::isValidString (file.c_str(), file.size()))
+    return Path::join (dir, relative);
+  const String samples = Path::join (dir, "samples"), name = encodefs (Path::basename (file));
+  const StringPair parts = Path::split_extension (name, true);
+  if (Path::mkdirs (samples))
+    for (uint i = 0; ; i++)
+      {
+        const String link = Path::join (samples, i ? string_format ("%s(%u)%s", parts.first, i, parts.second) : name);
+        if (Path::equals (link, file))
+          return link;
+        if (symlink (file.c_str(), link.c_str()) == 0)
+          {
+            created = true;
+            return link;
+          }
+        if (errno != EEXIST)
+          break;
+      }
+  warning ("Project: failed to link %s: %s", file, strerror (errno));
+  return "";
 }
 
 Error

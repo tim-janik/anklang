@@ -847,6 +847,8 @@ export class Track // Ase::Track
   { return this.$rpc ("create_midi_clip", [this, arg1, arg2, arg3]); }
   create_audio_clip (arg1: string, arg2: number, arg3: number): Promise<Clip>
   { return this.$rpc ("create_audio_clip", [this, arg1, arg2, arg3]); }
+  insert_wave_clip (arg1: string, arg2: string, arg3: number): Promise<Clip>
+  { return this.$rpc ("insert_wave_clip", [this, arg1, arg2, arg3]); }
   create_plugin (arg1: string): Promise<Plugin>
   { return this.$rpc ("create_plugin", [this, arg1]); }
   list_plugins (): Promise<Plugin[]>

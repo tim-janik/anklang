@@ -7,8 +7,11 @@
 #include "plugin.hh"
 #include "server.hh"
 #include "main.hh"
+#include "path.hh"
+#include "unicode.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
+#include <unistd.h>
 
 namespace te = tracktion::engine;
 
@@ -505,6 +508,42 @@ TrackImpl::create_audio_clip (const String &name, double start, double length)
   else
     warning ("track_.get() returned null");
   return nullptr;
+}
+
+ClipP
+TrackImpl::insert_wave_clip (const String &name, const String &utf8filename, double start)
+{
+  auto at = dynamic_cast<te::AudioTrack*> (track_.get());
+  if (!at)
+    {
+      warning ("Track.insert_wave_clip: track holds no audio clips: %s", te_type_);
+      return nullptr;
+    }
+  const String file = Path::realpath (Path::abspath (decodefs (utf8filename)));
+  if (utf8filename.empty() || !Path::check (file, "fr"))
+    {
+      warning ("Track.insert_wave_clip: not an audio file: %s", file);
+      return nullptr;
+    }
+  bool linked = false;
+  const String link = project_->link_sample (file, linked);
+  return_unless (!link.empty(), nullptr);
+  te::AudioFile audiofile (at->edit.engine, juce::File (link));
+  if (linked)
+    at->edit.engine.getAudioFileManager().forceFileUpdate (audiofile);
+  if (!audiofile.isValid())
+    {
+      if (linked)
+        unlink (link.c_str());
+      warning ("Track.insert_wave_clip: not an audio file: %s", file);
+      return nullptr;
+    }
+  const te::ClipPosition position = { { tracktion::TimePosition::fromSeconds (start),
+                                        tracktion::TimeDuration::fromSeconds (audiofile.getLength()) }, {} };
+  auto clip = at->insertWaveClip (juce::String (name), juce::File (link), position, false);
+  if (!clip && linked)
+    unlink (link.c_str());
+  return clip ? ClipImpl::from_trkn (*clip) : nullptr;
 }
 
 PluginP

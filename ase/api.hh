@@ -297,6 +297,7 @@ public:
   virtual void            launcher_clips      (const ClipS &) = 0;   ///< NOP setter, assignments are ignored.
   virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
   virtual ClipP           create_audio_clip   (const String &name, double start, double length) = 0; ///< Create a new audio clip on this track.
+  virtual ClipP           insert_wave_clip    (const String &name, const String &utf8filename, double start) = 0; ///< Insert an audio clip at `start` seconds that plays a file.
   virtual PluginP         create_plugin       (const String &type) = 0; ///< Create a new plugin on this track by type identifier.
   virtual PluginS         list_plugins        () = 0;                ///< List plugins on this track.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
