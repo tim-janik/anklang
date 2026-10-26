@@ -37,6 +37,7 @@ public:
   String       ui_test_fetch        () override;
   void         ui_test_report       (const String &testname, bool success) override;
   String       ui_js_fetch          () override;
+  void         purge_cachedirs      () override;
   using Block = FastMemory::Block;
   Block        telemem_allocate     (uint32 length) const;
   void         telemem_release      (Block telememblock) const;

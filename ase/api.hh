@@ -439,6 +439,7 @@ public:
   virtual String    ui_test_fetch     () = 0;                    ///< Fetch next UI test name to run (empty if none).
   virtual void      ui_test_report    (const String &testname, bool success) = 0; ///< Report UI test result.
   virtual String    ui_js_fetch       () = 0;                    ///< Fetch UI JS script to run (empty if none).
+  virtual void      purge_cachedirs   () = 0;                    ///< Remove the cache dirs of processes that are gone.
   String            engine_stats      ();                        ///< Print engine state.
   void              exit_program      (int status = 0);          ///< End program (without saving).
   // projects

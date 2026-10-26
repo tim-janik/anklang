@@ -1009,6 +1009,8 @@ export class Server // Ase::Server
   { return this.$rpc ("ui_test_report", [this, arg1, arg2]); }
   ui_js_fetch (): Promise<string>
   { return this.$rpc ("ui_js_fetch", [this]); }
+  purge_cachedirs (): Promise<void>
+  { return this.$rpc ("purge_cachedirs", [this]); }
   engine_stats (): Promise<string>
   { return this.$rpc ("engine_stats", [this]); }
   exit_program (arg1: number): Promise<void>
