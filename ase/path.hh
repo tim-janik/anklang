@@ -46,7 +46,7 @@ size_t       file_size           (const String &path);
 StringPair   split_extension     (const std::string &filepath, bool lastdot = false);
 String       expand_tilde        (const String &path);
 String       user_home           (const String &username = "");
-String       xdg_dir             (const String &xdgdir = "");
+String       xdg_dir             (const String &xdgdir = "", bool fallback = true);
 String       data_home           ();
 String       config_home         ();
 String       config_names        ();

@@ -344,19 +344,19 @@ runtime_dir ()
 using StringStringM = std::map<String,String>;
 
 static StringStringM
+xdg_expand_home (StringStringM defs)
+{
+  const String uhome = user_home();
+  for (auto &it : defs)
+    if (string_startswith (it.second, "$HOME/"))
+      it.second = uhome + it.second.substr (5);
+  return defs;
+}
+
+static StringStringM
 xdg_user_dirs()
 {
-  StringStringM defs = {
-    { "XDG_DESKTOP_DIR",        "$HOME/Desktop" },
-    { "XDG_DOCUMENTS_DIR",      "$HOME/Documents" },
-    { "XDG_DOWNLOAD_DIR",       "$HOME/Downloads" },
-    { "XDG_MUSIC_DIR",          "$HOME/Music" },
-    { "XDG_PICTURES_DIR",       "$HOME/Pictures" },
-    { "XDG_PROJECTS_DIR",       "$HOME/Projects" },
-    { "XDG_PUBLICSHARE_DIR",    "$HOME/Public" },
-    { "XDG_TEMPLATES_DIR",      "$HOME/Templates" },
-    { "XDG_VIDEOS_DIR",         "$HOME/Videos" },
-  };
+  StringStringM defs;
   // Only the user's own file is consulted, system wide defaults are handled by xdg-user-dirs-update
   const String udirs = join (config_home(), "user-dirs.dirs");
   const String data = stringread (udirs); // https://wiki.archlinux.org/title/XDG_user_directories
@@ -372,18 +372,28 @@ xdg_user_dirs()
             defs[key] = value;
         }
     }
-  const String uhome = user_home();
-  for (auto &it : defs)
-    if (string_startswith (it.second, "$HOME/"))
-      it.second = uhome + it.second.substr (5);
-  if (0)
-    for (const auto &pair : defs)
-      printerr ("XDG: %s = %s\n", pair.first, pair.second);
-  return defs;
+  return xdg_expand_home (defs);
+}
+
+static StringStringM
+xdg_user_dir_defaults()
+{
+  StringStringM defs = {
+    { "XDG_DESKTOP_DIR",        "$HOME/Desktop" },
+    { "XDG_DOCUMENTS_DIR",      "$HOME/Documents" },
+    { "XDG_DOWNLOAD_DIR",       "$HOME/Downloads" },
+    { "XDG_MUSIC_DIR",          "$HOME/Music" },
+    { "XDG_PICTURES_DIR",       "$HOME/Pictures" },
+    { "XDG_PROJECTS_DIR",       "$HOME/Projects" },
+    { "XDG_PUBLICSHARE_DIR",    "$HOME/Public" },
+    { "XDG_TEMPLATES_DIR",      "$HOME/Templates" },
+    { "XDG_VIDEOS_DIR",         "$HOME/Videos" },
+  };
+  return xdg_expand_home (defs);
 }
 
 String
-xdg_dir (const String &xdgdir)
+xdg_dir (const String &xdgdir, bool fallback)
 {
   const String udir = string_toupper (xdgdir);
   if (udir == "HOME")
@@ -401,11 +411,17 @@ xdg_dir (const String &xdgdir)
   if (var && isabs (var))
     return var;
   // Callers rely on xdg_dir() being idempotent
-  static const StringStringM defs = xdg_user_dirs();
-  const auto it = defs.find (envkey);
-  if (it == defs.end())
+  static const StringStringM userdirs = xdg_user_dirs();
+  const auto it = userdirs.find (envkey);
+  if (it != userdirs.end())
+    return it->second;
+  if (!fallback)
+    return "";
+  static const StringStringM defaults = xdg_user_dir_defaults();
+  const auto dit = defaults.find (envkey);
+  if (dit == defaults.end())
     warning ("%s: unknown XDG dir: %s", __func__, xdgdir);
-  return it != defs.end() ? it->second : "";
+  return dit != defaults.end() ? dit->second : "";
 }
 
 /// Get a $XDG_*_DIRS directory list, dropping invalid relative paths, see: https://specifications.freedesktop.org/basedir-spec/latest
