@@ -334,6 +334,10 @@ runtime_dir ()
   const char *var = getenv ("XDG_RUNTIME_DIR");
   if (var && isabs (var))
     return var;
+#ifdef __linux__
+  // The specification mandates a warning when falling back to a replacement directory
+  warning ("%s: $XDG_RUNTIME_DIR unset, using /run/user/%u", __func__, getuid());
+#endif
   return string_format ("/run/user/%u", getuid());
 }
 
@@ -344,25 +348,28 @@ xdg_user_dirs()
 {
   StringStringM defs = {
     { "XDG_DESKTOP_DIR",        "$HOME/Desktop" },
-    { "XDG_DOWNLOAD_DIR",       "$HOME/Downloads" },
-    { "XDG_TEMPLATES_DIR",      "$HOME/Templates" },
-    { "XDG_PUBLICSHARE_DIR",    "$HOME/Public" },
     { "XDG_DOCUMENTS_DIR",      "$HOME/Documents" },
+    { "XDG_DOWNLOAD_DIR",       "$HOME/Downloads" },
     { "XDG_MUSIC_DIR",          "$HOME/Music" },
     { "XDG_PICTURES_DIR",       "$HOME/Pictures" },
+    { "XDG_PROJECTS_DIR",       "$HOME/Projects" },
+    { "XDG_PUBLICSHARE_DIR",    "$HOME/Public" },
+    { "XDG_TEMPLATES_DIR",      "$HOME/Templates" },
     { "XDG_VIDEOS_DIR",         "$HOME/Videos" },
   };
-  String udirs = join (config_home(), "user-dirs.dirs"); // https://wiki.archlinux.org/title/XDG_user_directories
-  String data = stringread (udirs);
+  // Only the user's own file is consulted, system wide defaults are handled by xdg-user-dirs-update
+  const String udirs = join (config_home(), "user-dirs.dirs");
+  const String data = stringread (udirs); // https://wiki.archlinux.org/title/XDG_user_directories
   if (!data.empty())
     {
       IniFile ff { udirs, data };
       const String global = "";
       for (String key : ff.attributes (global))
         {
-          const String v = ff.value_as_string (global + "." + key);
-          if (!key.empty() && !v.empty())
-            defs[key] = v;
+          const String value = string_from_cquote (ff.raw_value (global + "." + key));
+          // Valid entries are absolute or relative to $HOME, a bare $HOME disables a directory
+          if (string_startswith (value, "$HOME/") || string_startswith (value, "/"))
+            defs[key] = value;
         }
     }
   const String uhome = user_home();
@@ -389,33 +396,44 @@ xdg_dir (const String &xdgdir)
     return cache_home();
   if (udir == "RUNTIME")
     return runtime_dir();
+  const String envkey = "XDG_" + udir + "_DIR";
+  const char *var = getenv (envkey.c_str());
+  if (var && isabs (var))
+    return var;
+  // Callers rely on xdg_dir() being idempotent
   static const StringStringM defs = xdg_user_dirs();
-  const auto it = defs.find ("XDG_" + string_toupper (xdgdir) + "_DIR");
+  const auto it = defs.find (envkey);
   if (it == defs.end())
     warning ("%s: unknown XDG dir: %s", __func__, xdgdir);
   return it != defs.end() ? it->second : "";
+}
+
+/// Get a $XDG_*_DIRS directory list, dropping invalid relative paths, see: https://specifications.freedesktop.org/basedir-spec/latest
+static String
+xdg_dir_list (const char *var, const String &fallback)
+{
+  StringS dirs;
+  if (var)
+    for (const String &dir : string_split (var, ":"))
+      if (isabs (dir))
+        dirs.push_back (dir);
+  return dirs.empty() ? fallback : string_join (":", dirs);
 }
 
 /// Get the $XDG_CONFIG_DIRS directory list, see: https://specifications.freedesktop.org/basedir-spec/latest
 String
 config_dirs ()
 {
-  const char *var = getenv ("XDG_CONFIG_DIRS");
-  if (var && var[0])
-    return var;
-  else
-    return "/etc/xdg";
+  static const String dirs = xdg_dir_list (getenv ("XDG_CONFIG_DIRS"), "/etc/xdg");
+  return dirs;
 }
 
 /// Get the $XDG_DATA_DIRS directory list, see: https://specifications.freedesktop.org/basedir-spec/latest
 String
 data_dirs ()
 {
-  const char *var = getenv ("XDG_DATA_DIRS");
-  if (var && var[0])
-    return var;
-  else
-    return "/usr/local/share:/usr/share";
+  static const String dirs = xdg_dir_list (getenv ("XDG_DATA_DIRS"), "/usr/local/share:/usr/share");
+  return dirs;
 }
 
 static String
