@@ -346,7 +346,7 @@ make_auth_string()
   return auth;
 }
 
-static void
+static CoTaskVoid
 run_tests_and_quit ()
 {
   const char *anklang_projects_dir = getenv ("ANKLANG_PROJECTS_DIR");
@@ -357,9 +357,9 @@ run_tests_and_quit ()
         fatal_error ("failed to create the test projects root");
     }
   if (check_test_names.empty())
-    Test::run();
+    co_await Test::run();
   else
-    Test::run (check_test_names);
+    co_await Test::run (check_test_names);
   main_loop->quit (0);
 }
 

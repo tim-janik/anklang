@@ -58,7 +58,7 @@ test_audio_sample_load()
 }
 TEST_ADD (test_audio_sample_load);
 
-void
+CoTaskVoid
 test_project_directory_audio()
 {
   namespace te = tracktion::engine;
@@ -74,7 +74,7 @@ test_project_directory_audio()
     if (candidate->getName().toStdString() == track->name())
       audio_track = candidate;
   TASSERT (audio_track && audio_track->getClips().size() == 1);
-  auto render = [&] (const String &file, int clip_index) {
+  auto render = [&] (const String &file, int clip_index) -> CoTaskVoid {
     te::Renderer::Parameters params (edit);
     params.destFile = juce::File (file);
     params.audioFormat = edit.engine.getAudioFileFormatManager().getWavFormat();
@@ -86,7 +86,7 @@ test_project_directory_audio()
     {
       te::Renderer::RenderTask task ("Project rename", params, nullptr, nullptr);
       while (task.runJob() != juce::ThreadPoolJob::jobHasFinished)
-        main_loop->iterate (false);
+        co_await main_loop->delay (std::chrono::milliseconds (1));
       TASSERT (task.errorMessage.isEmpty());
     }
     TASSERT (params.destFile.existsAsFile());
@@ -127,7 +127,7 @@ test_project_directory_audio()
     project->stop_playback();
     return file;
   };
-  render (Path::join (old_dir, "before.wav"), 0);
+  co_await render (Path::join (old_dir, "before.wav"), 0);
   const String recording = record();
   project->start_playback();
   TASSERT (project->is_playing());
@@ -140,8 +140,8 @@ test_project_directory_audio()
   project->stop_playback();
   const String dir = project->project_dir();
   TASSERT (Path::check (Path::join (dir, Path::basename (recording)), "f"));
-  render (Path::join (dir, "after.wav"), 0);
-  render (Path::join (dir, "recorded.wav"), 1);
+  co_await render (Path::join (dir, "after.wav"), 0);
+  co_await render (Path::join (dir, "recorded.wav"), 1);
   TASSERT (Path::dircontains (dir, record()));
   project->start_playback();
   TASSERT (!project->remove_project_dir() && !project->is_playing());

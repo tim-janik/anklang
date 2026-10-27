@@ -753,7 +753,7 @@ thread_shuffle_allocs (ThreadData *td)
   main_loop_wakeup();
 }
 
-static void
+static CoTaskVoid
 run_thread_shuffle_allocs (bool varying_workloads)
 {
   thread_shuffle_pending = N_THREADS;
@@ -776,7 +776,7 @@ run_thread_shuffle_allocs (bool varying_workloads)
     }
   // Service preallocation requests until every worker has finished.
   while (thread_shuffle_pending)
-    main_loop->iterate (true);  // only allowed in unit tests
+    co_await main_loop->delay (std::chrono::milliseconds (1));
   // when done, join threads
   for (size_t t = 0; t < N_THREADS; t++)
     tdata[t].thread.join();
@@ -795,20 +795,20 @@ run_thread_shuffle_allocs (bool varying_workloads)
     printout ("Loft Stats:\n%s\n", loft_stats_string (lstats));
 }
 
-TEST_INTEGRITY (loft_shuffle_thread_allocs);
-static void
+static CoTaskVoid
 loft_shuffle_thread_allocs()
 {
-  run_thread_shuffle_allocs (false);
+  co_await run_thread_shuffle_allocs (false);
 }
+TEST_ASYNC_INTEGRITY (loft_shuffle_thread_allocs);
 
-TEST_INTEGRITY (loft_shuffle_uneven_thread_allocs);
-static void
+static CoTaskVoid
 loft_shuffle_uneven_thread_allocs()
 {
   // vary workloads so workers exit at different times
-  run_thread_shuffle_allocs (true);
+  co_await run_thread_shuffle_allocs (true);
 }
+TEST_ASYNC_INTEGRITY (loft_shuffle_uneven_thread_allocs);
 
 TEST_INTEGRITY (loft_allocator_tests);
 static void

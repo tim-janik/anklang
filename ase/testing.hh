@@ -3,6 +3,7 @@
 
 #include <ase/utils.hh>
 #include <ase/strings.hh>
+#include <ase/cotask.hh>
 
 namespace Ase {
 
@@ -30,6 +31,7 @@ namespace Test {
 #define TEST_SLOW(fun)          static const ::Ase::Test::TestChain ASE_CPP_PASTE2 (__Ase__Test__TestChain_, __LINE__) (fun, ASE_CPP_STRINGIFY (fun), ::Ase::Test::SLOW)
 #define TEST_BENCH(fun)         static const ::Ase::Test::TestChain ASE_CPP_PASTE2 (__Ase__Test__TestChain_, __LINE__) (fun, ASE_CPP_STRINGIFY (fun), ::Ase::Test::BENCH)
 #define TEST_BROKEN(fun)        static const ::Ase::Test::TestChain ASE_CPP_PASTE2 (__Ase__Test__TestChain_, __LINE__) (fun, ASE_CPP_STRINGIFY (fun), ::Ase::Test::BROKEN)
+#define TEST_ASYNC_INTEGRITY(fun) static const ::Ase::Test::TestChain ASE_CPP_PASTE2 (__Ase__Test__TestChain_, __LINE__) (fun, ASE_CPP_STRINGIFY (fun), ::Ase::Test::INTEGRITY)
 
 /** Class for profiling benchmark tests.
  * UseCase: Benchmarking function implementations, e.g. to compare sorting implementations.
@@ -77,11 +79,11 @@ struct TestEntry {
 };
 using TestEntries = std::vector<TestEntry>;
 TestEntries list_tests ();
-int         run_test   (const std::string &test_identifier);
+CoTask<int> run_test   (const std::string &test_identifier);
 
 // === test maintenance ===
-int     run             ();     ///< Run all registered tests.
-int     run             (const StringS &test_names);     ///< Run named tests.
+CoTaskVoid run           ();     ///< Run all registered tests.
+CoTaskVoid run           (const StringS &test_names);     ///< Run named tests.
 bool    verbose         ();     ///< Indicates whether tests should run verbosely.
 bool    slow            ();     ///< Indicates whether slow tests should be run.
 void    test_output     (int kind, const String &string);
@@ -151,15 +153,16 @@ Timer::benchmark (Callee callee)
 
 class TestChain {
 public:
-  explicit         TestChain (std::function<void()> tfunc, const std::string &tname, Kind kind);
-  static void      run       (ptrdiff_t internal_token, const StringS *test_names);
+  explicit         TestChain (void (*tfunc)(), const std::string &tname, Kind kind);
+  explicit         TestChain (CoTaskVoid (*tfunc)(), const std::string &tname, Kind kind);
+  static CoTaskVoid run      (ptrdiff_t internal_token, const StringS *test_names);
   const TestChain* next      () const { return next_; }
   std::string      name      () const { return name_; }
   int64            flags     () const { return kind_; }
-  void             run       () const { func_(); }
+  CoTaskVoid       run       () const { return func_(); }
 private:
   const std::string     name_;
-  std::function<void()> func_;
+  std::function<CoTaskVoid()> func_;
   const TestChain      *const next_ = NULL;
   Kind                  kind_ = PLAIN;
 };
