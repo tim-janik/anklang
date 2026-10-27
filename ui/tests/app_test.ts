@@ -6,6 +6,14 @@ import * as Dom from '../dom';
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
 
+/// Replace `object[name]` with `value`, the returned function puts back exactly what was there.
+function stub (object: any, name: string, value: any): () => void
+{
+  const own = Object.hasOwn (object, name), original = object[name];
+  object[name] = value;
+  return () => { if (own) object[name] = original; else delete object[name]; };
+}
+
 /// The window title includes the project name (M7).
 async function test_activation_title (): Promise<boolean>
 {
@@ -78,29 +86,37 @@ async function test_activation_piano_roll (): Promise<boolean>
     if (current_clip_name !== clip_name)
       throw new Error ('activation did not open the first clip in the piano roll');
     const send = Ase.Jsonipc.send;
-    let saved_project;
+    let saved_project, saved_name, resolve_name;
+    const name_fields = document.createElement ('div');
+    const restore_modal_dialog = stub (shell, 'async_modal_dialog', setup => {
+      setup.div_handler (name_fields);
+      return new Promise (resolve => { resolve_name = resolve; });
+    });
     Ase.Jsonipc.send = function (method, params) {
       if (method === 'save_project') {
         saved_project = params[0];
+        saved_name = params[1];
         return Promise.resolve (Ase.Error.NONE);
       }
       return send.call (this, method, params);
     };
     try {
       await Dom.ui_next_frame();
-      document.querySelector<HTMLButtonElement> ('#g-filemenu button[uri="saveas"]')!.click();
-      for (let frame = 0; frame < 120 && !shell.r.fs_shown; frame++)
+      document.querySelector<HTMLButtonElement> ('#g-filemenu button[uri="save"]')!.click();
+      for (let frame = 0; frame < 120 && !resolve_name; frame++)
         await Dom.ui_next_frame();
-      if (!shell.r.fs_shown)
-        throw new Error ('Save As did not open its file selector');
+      if (!resolve_name)
+        throw new Error ('Save did not ask for a project name');
+      name_fields.querySelector<HTMLInputElement> ('input')!.value = 'Saved activation test';
       await app.load_project (old_project);
-      shell.fs.resolve ('/tmp/anklang-ui-save-test.anklang');
+      resolve_name (1);
       for (let frame = 0; frame < 120 && !saved_project; frame++)
         await Dom.ui_next_frame();
-      if (saved_project !== project)
-        throw new Error ('Save As used the project activated while its file selector was open');
+      if (saved_project !== project || saved_name !== 'Saved activation test')
+        throw new Error ('Save lost the project or name while its name dialog was open');
     } finally {
-      if (shell.r.fs_shown) shell.fs.resolve();
+      resolve_name?. (-1);
+      restore_modal_dialog();
       Ase.Jsonipc.send = send;
     }
   } finally {
@@ -111,6 +127,167 @@ async function test_activation_piano_roll (): Promise<boolean>
   return true;
 }
 sub_tests.push (['piano_roll', test_activation_piano_roll]);
+
+async function test_open_project (): Promise<boolean>
+{
+  const app = window.App, old_project = Shell.project;
+  const project = await Ase.server.create_project ('Stored project name');
+  const send = Ase.Jsonipc.send;
+  let error = Ase.Error.NONE, opened_path;
+  Ase.Jsonipc.send = function (method, params) {
+    if (method === 'open_project') {
+      opened_path = params[1];
+      return Promise.resolve (error);
+    }
+    if (method === 'last_project')
+      return Promise.resolve (project);
+    return send.call (this, method, params);
+  };
+  try {
+    if (await app.load_project ('/projects/different-dir/project.anklang') !== Ase.Error.NONE)
+      throw new Error ('Open failed');
+    if (Shell.project !== project || opened_path !== '/projects/different-dir/project.anklang')
+      throw new Error ('Open did not activate Server.last_project');
+    if (await project.$refetch (() => project.name) !== 'Stored project name')
+      throw new Error ('Open replaced the saved project name');
+    error = Ase.Error.BAD_PROJECT;
+    if (await app.load_project ('/projects/bad') !== error || Shell.project !== project)
+      throw new Error ('A failed Open changed the current project');
+  } finally {
+    Ase.Jsonipc.send = send;
+    await app.load_project (old_project);
+    await project.discard();
+  }
+  return true;
+}
+sub_tests.push (['open_project', test_open_project]);
+
+async function test_save_project_name (): Promise<boolean>
+{
+  const app = window.App, old_project = Shell.project;
+  const project = await Ase.server.create_project ('Untitled');
+  const send = Ase.Jsonipc.send;
+  let saved_name, saves = 0;
+  Ase.Jsonipc.send = function (method, params) {
+    if (method === 'save_project') {
+      if (params[0] !== project || params.length !== 2)
+        throw new Error ('Save sent a filename or collection argument');
+      saved_name = params[1];
+      saves++;
+      return Promise.resolve (Ase.Error.NONE);
+    }
+    return send.call (this, method, params);
+  };
+  try {
+    await app.load_project (project);
+    for (const accept of [false, true]) {
+      document.querySelector<HTMLButtonElement> ('#g-filemenu button[uri="save"]')!.click();
+      let dialog: HTMLDialogElement | null = null;
+      for (let frame = 0; frame < 120 && !dialog; frame++) {
+        await Dom.ui_next_frame();
+        dialog = document.querySelector<HTMLDialogElement> ('dialog.b-modals[open]');
+      }
+      if (!dialog)
+        throw new Error ('An unnamed project needs a name dialog');
+      dialog.querySelector<HTMLInputElement> ('input')!.value = 'First save';
+      dialog.querySelectorAll<HTMLButtonElement> ('footer button')[accept ? 1 : 0].click();
+      await Dom.ui_next_frame();
+      await Dom.ui_next_frame();
+      if (!accept && saves)
+        throw new Error ('Cancelling the name dialog saved the project');
+      if (accept) {
+        for (let frame = 0; frame < 120 && !saves; frame++)
+          await Dom.ui_next_frame();
+        if (saves !== 1 || saved_name !== 'First save')
+          throw new Error ('Save did not pass the project name');
+      }
+    }
+  } finally {
+    Ase.Jsonipc.send = send;
+    document.querySelector<HTMLDialogElement> ('dialog.b-modals[open]')?.close();
+    await app.load_project (old_project);
+    await project.discard();
+  }
+  return true;
+}
+sub_tests.push (['save_project_name', test_save_project_name]);
+
+async function test_save_project_as (): Promise<boolean>
+{
+  const app = window.App, shell = window.Shell, old_project = shell.project;
+  const project = await Ase.server.create_project ('Save As test');
+  const send = Ase.Jsonipc.send;
+  let saved, notice = '';
+  Ase.Jsonipc.send = function (method, params) {
+    if (method === 'save_project_as') {
+      saved = params;
+      return Promise.resolve (Ase.Error.NONE);
+    }
+    return send.call (this, method, params);
+  };
+  const restore = [ stub (shell, 'select_file', async () => '/projects/Copy'),
+                    stub (shell, 'show_notice', message => { notice = message; }) ];
+  try {
+    await app.load_project (project);
+    document.querySelector<HTMLButtonElement> ('#g-filemenu button[uri="saveas"]')!.click();
+    for (let frame = 0; frame < 120 && !notice; frame++)
+      await Dom.ui_next_frame();
+    if (saved?.[0] !== project || saved?.[1] !== '/projects/Copy' || !notice.includes ('Project Saved'))
+      throw new Error ('Save As did not save the project into the selected dir');
+  } finally {
+    Ase.Jsonipc.send = send;
+    restore.forEach (undo => undo());
+    await app.load_project (old_project);
+    await project.discard();
+  }
+  return true;
+}
+sub_tests.push (['save_project_as', test_save_project_as]);
+
+async function test_file_menu_replaces_project (): Promise<boolean>
+{
+  const app = window.App, shell = window.Shell, old_project = shell.project;
+  const source = await Ase.server.create_project ('Replaced project');
+  const opened = await Ase.server.create_project ('Opened project');
+  const send = Ase.Jsonipc.send;
+  const discarded = new Set();
+  let replacement;
+  Ase.Jsonipc.send = function (method, params) {
+    if (method === 'open_project')
+      return Promise.resolve (Ase.Error.NONE);
+    if (method === 'last_project')
+      return Promise.resolve (opened);
+    if (method === 'discard')
+      discarded.add (params[0]);
+    return send.call (this, method, params);
+  };
+  const restore_select_file = stub (shell, 'select_file', async () => '/projects/replaced/project.anklang');
+  try {
+    await app.load_project (source);
+    document.querySelector<HTMLButtonElement> ('#g-filemenu button[uri="loadnew"]')!.click();
+    for (let frame = 0; frame < 120 && !discarded.has (source); frame++)
+      await Dom.ui_next_frame();
+    if (shell.project === source || !discarded.has (source))
+      throw new Error ('New kept the replaced project open');
+    replacement = shell.project;
+    if (await source.save_project ('Replaced') !== Ase.Error.INTERNAL)
+      throw new Error ('The replaced project can still save');
+    document.querySelector<HTMLButtonElement> ('#g-filemenu button[uri="load"]')!.click();
+    for (let frame = 0; frame < 120 && !discarded.has (replacement); frame++)
+      await Dom.ui_next_frame();
+    if (shell.project !== opened || !discarded.has (replacement))
+      throw new Error ('Open kept the replaced project open');
+  } finally {
+    restore_select_file();
+    Ase.Jsonipc.send = send;
+    await app.load_project (old_project);
+    await source.discard();
+    await opened.discard();
+    await replacement?.discard();
+  }
+  return true;
+}
+sub_tests.push (['file_menu_replaces_project', test_file_menu_replaces_project]);
 
 async function test_overlapping_activation (): Promise<boolean>
 {
