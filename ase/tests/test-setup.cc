@@ -58,6 +58,7 @@ test_audio_sample_load()
 }
 TEST_ADD (test_audio_sample_load);
 
+// Temporary API-only exception for rendering and recording; switch to Ase APIs in a future change.
 CoTaskVoid
 test_project_directory_audio()
 {
@@ -118,8 +119,9 @@ test_project_directory_audio()
     float samples[512];
     std::fill_n (samples, 512, 0.25f);
     const float *channels[] = { samples };
+    const double stream_time = edit.engine.getDeviceManager().getCurrentStreamTime();
     for (int block = 0; block < 10; block++)
-      input.consumeNextAudioBlock (channels, 1, 512, block * 512.0 / 44100);
+      input.consumeNextAudioBlock (channels, 1, 512, stream_time + block * 512.0 / 44100);
     context.getNodePlayHead()->setPosition (tracktion::toSamples (duration, 44100));
     auto result = instance->stopRecording ({ .unloopedTimeToEndRecording = tracktion::TimePosition::fromSeconds (0.1) });
     TASSERT (result && result->size() == 1);

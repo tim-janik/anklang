@@ -44,6 +44,7 @@ ASE_TEST_LIST := \
   plugin_name \
   project_creation \
   project_dir_clip_files \
+  project_directory_audio_playback \
   project_dir_exit \
   project_dir_exit_child \
   project_dir_lifetime \
