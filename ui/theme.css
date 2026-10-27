@@ -10,15 +10,6 @@
   --b-statusbar-icon-brightness: 0.9; /* dim non-active */
   --b-statusbar-icon-scaleup: 1.1;    /* enlarge active */
 
-  /* == Animations == */
-  --b-transition-fast-slide: 0.15s;
-
-  /* == Handles == */
-  --b-resize-handle-thickness: 5px;
-  --b-resize-handle-bgcolor:   #555;
-  --b-resize-handle-hvcolor:   #bbb;
-  --b-resize-handle-border:    1.5px solid #111;
-
   /* == focus == */
   --b-focus-outline-width: 1px;
   --b-focus-outline:       var(--b-focus-outline-width) solid var(--b-style-focus-color);
