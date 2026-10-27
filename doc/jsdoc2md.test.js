@@ -58,6 +58,20 @@ function example () {
                 '## Block chapter\nBlock text.\n\n\n### Line chapter\nLine text.\n');
 });
 
+test ('handbook rules match ui/xbcomments.js', t => {
+  const f = fixture (t);
+  const filename = f.write ('rules.js', `
+/// ## Joined chapter
+
+/// Text after a blank line.
+const joined = 1;
+/** ## <b>Markup</b> is API text */
+export function markup () {}
+`);
+  assert.equal (f.run ('--markdown-only', filename), '## Joined chapter\n\nText after a blank line.\n');
+  assert.match (f.run (filename), /Markup/);
+});
+
 for (const ext of ['js', 'jsx', 'ts', 'tsx'])
   test (`Markdown and API extraction from ${ext}`, t => {
     const f = fixture (t);

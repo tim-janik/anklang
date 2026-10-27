@@ -82,7 +82,7 @@ function extract_comments (source, filename)
 	if (previous && range.pos < previous.end)
 	  continue;
 	if (prefix == '///' && previous?.kind == ts.SyntaxKind.SingleLineCommentTrivia &&
-	    /^[ \t]*\r?\n[ \t]*$/.test (source.slice (previous.end, range.pos)))
+	    /^\s*$/.test (source.slice (previous.end, range.pos)))
 	  previous.end = range.end;
 	else
 	  comments.push (range);
@@ -98,13 +98,13 @@ function extract_comments (source, filename)
       const comment = source.slice (range.pos, range.end);
       const text = fix_indent (comment);
       let replacement = comment;
-      if (/^#+\s+\S/.test (text))
+      if (/^#+\s+[-_.~!*'"();:@&=+$,\/?%#A-z0-9]/.test (text))
 	{
 	  blocks.push (text);
 	  replacement = comment.replace (/[^\r\n]/g, ' ');
 	}
       else if (comment.startsWith ('///'))
-	replacement = '/**\n' + text.replace (/\*\//g, '*​/').replace (/^/gm, ' * ') + '*/';
+	replacement = '/**\n' + text.replace (/\*\//g, '*\u200b/').replace (/^/gm, ' * ') + '*/';
       chunks.push (source.slice (end, range.pos), replacement);
       end = range.end;
     }
