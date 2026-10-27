@@ -95,6 +95,14 @@ export async function test_pianoroll_note_units (): Promise<boolean>
   const note_count = () => clip.all_notes.length;
   const roll = { clip, stepping: [0.25] };
   const controller = new PianoCtrl.PianoCtrl (roll);
+  for (const step of [0.25, 2]) {
+    roll.stepping = [step];
+    const grid = Math.min (step, 1);
+    if (controller.quantization() !== grid || controller.quantize (grid * 1.75) !== grid * 2 ||
+        controller.quantize (grid * 1.75, false) !== grid)
+      throw new Error ('piano grid rounding or truncation changed');
+  }
+  roll.stepping = [0.25];
   const press = (keyCode, ctrlKey = false, altKey = false) => controller.keydown ({
     keyCode, ctrlKey, shiftKey: false, altKey, preventDefault() {}, stopPropagation() {},
   });
@@ -220,21 +228,31 @@ export async function test_pianoroll_resize_hover (): Promise<boolean>
       for (const length_beats of [1 / 64, 1 / 16, 1 / 8, 0.25, 4]) {
         const note = { id: 1, note_number: 60, start_beat: 0.5, length_beats };
         const roll = {
-          pianotool: 'P', notes_canvas: canvas, clip: { all_notes: [note] },
+          pianotool: 'P', notes_canvas: canvas, clip: { all_notes: [note], $props: { $promise: Promise.resolve() } },
           layout: {
             DPR: dpr, beatscale: css_beatscale * dpr,
             beat_from_x: x => x / css_beatscale,
             midinote_from_y: () => note.note_number,
           },
         };
+        await new PianoCtrl.PianoCtrl (roll).keydown ({
+          keyCode: 65, ctrlKey: true, shiftKey: false, altKey: false, preventDefault() {}, stopPropagation() {},
+        });
+        roll.clip.all_notes.unshift ({ ...note, id: 2 });
         const hover = pixels => PianoCtrl.notes_canvas_tool_from_hover (roll, {
           target: canvas, offsetX: note.start_beat * css_beatscale + pixels, offsetY: 0,
         });
         const tail = hover (length_beats * css_beatscale * 0.9);
         if (tail.cursor !== 'var(--svg-cursor-hresize)' || tail.note_id !== note.id)
           throw new Error (`note tail did not select resize: length=${length_beats}, scale=${css_beatscale}, DPR=${dpr}`);
-        if (hover (length_beats * css_beatscale * 0.25).cursor !== 'var(--svg-cursor-move)')
+        const head = hover (length_beats * css_beatscale * 0.25);
+        if (head.cursor !== 'var(--svg-cursor-move)' || head.note_id !== note.id)
           throw new Error (`note head did not select move: length=${length_beats}, scale=${css_beatscale}, DPR=${dpr}`);
+        if (hover (length_beats * css_beatscale).note_id !== undefined)
+          throw new Error ('hover matched beyond the note');
+        roll.clip.all_notes = [];
+        if (hover (0).note_id !== undefined)
+          throw new Error ('hover matched an empty clip');
       }
   return true;
 }

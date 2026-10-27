@@ -3,27 +3,16 @@
 
 import MarkdownIt from 'markdown-it';
 
+const markdown = new MarkdownIt ({ linkify: true });
+markdown.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+  tokens[idx].attrSet ('target', '_blank');
+  return self.renderToken (tokens, idx, options);
+};
+
 /** Generate `element.innerHTML` from `markdown_text` */
 export function markdown_to_html (element, markdown_text) {
-  // configure Markdown generator
-  const config = { linkify: true };
-  const md = new MarkdownIt (config);
-  // add target=_blank to all links
-  const orig_link_open = md.renderer.rules.link_open || function (tokens, idx, options, env, self) {
-    return self.renderToken (tokens, idx, options); // default renderer
-  };
-  md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
-    const aIndex = tokens[idx].attrIndex ('target'); // attribute could be present already
-    if (aIndex >= 0)
-      tokens[idx].attrs[aIndex][1] = '_blank';       // override when present
-    else
-      tokens[idx].attrPush (['target', '_blank']);   // or add new attribute
-    return orig_link_open (tokens, idx, options, env, self); // resume
-  };
-  // render HTML
-  const html = md.render (markdown_text);
   element.classList.add ('b-markdown-it-outer');
-  element.innerHTML = html;
+  element.innerHTML = markdown.render (markdown_text);
 }
 
 /// Fetch URI from a DOM element, returns undefined if none is found (e.g. Number(0) is a valid URI).

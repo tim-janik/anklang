@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import * as Dom from '../dom';
 
 // == Test registry ==
@@ -181,21 +182,7 @@ async function test_overlapping_activation (): Promise<boolean>
 }
 sub_tests.push (['overlapping_activation', test_overlapping_activation]);
 
-// == Master runner ==
-/// Runs all sub-tests in sequence.
 export async function test_app (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('app: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('app failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('app', sub_tests);
 }

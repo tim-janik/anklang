@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 
+import { run_tests } from './runner.js';
 import { createComponent, render } from 'solid-js/web';
 import { Editable } from '../b/editable';
 import * as Dom from '../dom';
@@ -250,21 +251,7 @@ async function test_editable_ref_activate (): Promise<boolean>
 }
 sub_tests.push (['ref_activate', test_editable_ref_activate]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_editable (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('editable: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('editable failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('editable', sub_tests);
 }

@@ -1,11 +1,33 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL-2.0
 
+import { run_tests } from './runner.js';
 import { createComponent, render } from 'solid-js/web';
 import { createSignal } from 'solid-js';
 import { TrackList } from '../b/tracklist';
 import { DevicePanel } from '../b/devicepanel';
 import { TreeBrowser } from '../b/treebrowser';
 import * as Dom from '../dom';
+
+async function test_flex_utilities (): Promise<boolean>
+{
+  const element = document.createElement ('div');
+  document.body.appendChild (element);
+  try {
+    for (const [name, direction] of [['hflex', 'row'], ['vflex', 'column']]) {
+      element.className = name;
+      for (const inline of [false, true]) {
+        element.toggleAttribute ('inline', inline);
+        const style = getComputedStyle (element);
+        if (style.display !== (inline ? 'inline-flex' : 'flex') || style.flexDirection !== direction ||
+            style.flexWrap !== 'nowrap' || style.flexBasis !== 'auto' || style.alignItems !== 'stretch' || style.alignContent !== 'stretch')
+          throw new Error (`${name}/${inline}: flex utility styles changed`);
+      }
+    }
+  } finally {
+    element.remove();
+  }
+  return true;
+}
 
 /// Minimal fake project that reports no tracks.
 function make_fake_project (create_track = () => {})
@@ -18,6 +40,7 @@ function make_fake_project (create_track = () => {})
 
 // == Test registry ==
 const sub_tests: [string, () => Promise<any>][] = [];
+sub_tests.push (['flex_utilities', test_flex_utilities]);
 
 /// Test that TrackList forwards host attributes (class, style) to its root element.
 async function test_shell_tracklist_forwarding (): Promise<boolean>
@@ -165,21 +188,7 @@ async function test_shell_treebrowser_hidden (): Promise<boolean>
 }
 sub_tests.push (['treebrowser_hidden', test_shell_treebrowser_hidden]);
 
-// == Master runner ==
-/// Single exported entry point runs all sub-tests in sequence.
 export async function test_shell (): Promise<boolean>
 {
-  if (!sub_tests.length)
-    throw new Error ('shell: no sub-tests registered');
-  const failures: string[] = [];
-  for (const [name, fn] of sub_tests) {
-    try {
-      await fn();
-    } catch (e) {
-      failures.push (`${name}: ${(e as Error)?.message ?? e}`);
-    }
-  }
-  if (failures.length)
-    throw new Error ('shell failures:\n  ' + failures.join ('\n  '));
-  return true;
+  return run_tests ('shell', sub_tests);
 }

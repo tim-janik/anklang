@@ -8,8 +8,10 @@ UI_TEST_LIST := \
   deviceeditor_test.test_deviceeditor \
   devicepanel_test.test_devicepanel \
   dialog_test.test_dialog \
+  dom_test.test_markdown \
   editable_test.test_editable \
   knob_test.test_knob \
+  menubar_test.test_menubar \
   menuitems_test.test_menuitems \
   modals_test.test_modals \
   noticeboard_test.test_noticeboard \
@@ -25,6 +27,7 @@ UI_TEST_LIST := \
   preferencesdialog_test.test_preferencesdialog \
   project_test.test_project_play_toggle \
   relayout_test.test_relayout \
+  runner_test.test_runner \
   script_test.test_script_note_units \
   shell_test.test_shell \
   switchinput_test.test_switchinput \

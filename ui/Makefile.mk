@@ -15,6 +15,7 @@ $>/gen/testcalls.g.ts: ui/gen-testcalls.ts ui/Makefile.mk ui/tests/TestList.g.mk
 	$(QGEN)
 	$Q $(RUNTS) $< --out $@ $(UI_TESTS_FILES)
 VITE_DEPS += $>/gen/testcalls.g.ts
+VITE_DEPS += $(wildcard ui/tests/*.js)
 
 # == $>/gen/ui/assets/testcalls-list.txt ==
 $>/gen/ui/assets/testcalls-list.txt: ui/gen-testcalls.ts ui/Makefile.mk ui/tests/TestList.g.mk $(UI_TESTS_FILES)	| $>/gen/ui/assets/
@@ -48,6 +49,13 @@ check-ui-tests: check-$1
 endef
 $(foreach T, $(UI_TEST_LIST), $(eval $(call UI_TEST_CHECK,$T)))
 CHECK_TARGETS += check-ui-tests
+
+# == check-ui-scripts ==
+check-ui-scripts:
+	$(QECHO) TEST $@
+	$Q node --test ui/tests/*.test.js
+.PHONY: check-ui-scripts
+CHECK_TARGETS += check-ui-scripts
 
 # == check-ui-js ==
 .PHONY: check-ui-js

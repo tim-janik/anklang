@@ -2,66 +2,52 @@
 
 import { createComponent, render } from 'solid-js/web';
 import { Noticeboard, create_note } from '../b/noticeboard';
+import { TestTimers } from './timers';
 
 export async function test_noticeboard (): Promise<boolean>
 {
   const container = document.createElement ('div');
   document.body.appendChild (container);
   const dispose = render (() => createComponent (Noticeboard, {}), container);
-  const original_set = window.setTimeout, original_clear = window.clearTimeout;
-  const timers = new Map<number, () => void>();
-  let next_id = 0;
-  window.setTimeout = ((callback: () => void) => {
-    timers.set (++next_id, callback);
-    return next_id;
-  }) as typeof window.setTimeout;
-  window.clearTimeout = id => { timers.delete (id!); };
-  const tick = () => {
-    const pending = [...timers];
-    for (const [id, callback] of pending) {
-      if (!timers.delete (id)) continue;
-      callback();
-    }
-  };
+  const timers = new TestTimers();
   try {
     const dismiss = create_note ('dismiss during fade-in');
     const note = container.querySelector ('.note-board-note')!;
     dismiss();
     dismiss();
-    if (timers.size !== 1)
+    if (timers.pending !== 1)
       throw new Error ('dismissal left extra timers');
-    tick();
-    if (note.isConnected || timers.size)
+    timers.run();
+    if (note.isConnected || timers.pending)
       throw new Error ('dismissed notice left DOM or timers');
 
     create_note ('duplicate');
     create_note ('duplicate');
     if (container.querySelectorAll ('.note-board-fadeout').length !== 1)
       throw new Error ('duplicate notice was not dismissed');
-    tick();
+    timers.run();
     if (container.querySelectorAll ('.note-board-note').length !== 1)
       throw new Error ('duplicate notice was not removed');
-    tick();
-    tick();
-    if (container.querySelector ('.note-board-note') || timers.size)
+    timers.run();
+    timers.run();
+    if (container.querySelector ('.note-board-note') || timers.pending)
       throw new Error ('automatic dismissal left DOM or timers');
 
     create_note ('persistent', -1);
-    tick();
-    if (timers.size || !container.querySelector ('.note-board-note'))
+    timers.run();
+    if (timers.pending || !container.querySelector ('.note-board-note'))
       throw new Error ('persistent notice scheduled dismissal');
     create_note ('pending fade-in');
     create_note ('pending removal')();
     dispose();
-    if (timers.size || container.querySelector ('.note-board-note'))
+    if (timers.pending || container.querySelector ('.note-board-note'))
       throw new Error ('noticeboard cleanup left DOM or timers');
     create_note ('no board')();
-    if (timers.size)
+    if (timers.pending)
       throw new Error ('unmounted noticeboard scheduled a timer');
   } finally {
     dispose();
-    window.setTimeout = original_set;
-    window.clearTimeout = original_clear;
+    timers.restore();
     container.remove();
   }
   return true;

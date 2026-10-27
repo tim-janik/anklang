@@ -53,14 +53,6 @@ html {
 .focus-outline	{ outline: var(--focus-outline-width) solid var(--focus-outline-color); }
 
 /* == Utilities (CSS classes) == */
-@utility hflex {
-  /* Horizontal flexbox */
-  @apply flex flex-row;
-}
-@utility vflex {
-  /* Vertical flexbox */
-  @apply flex flex-col;
-}
 @utility modal-backdrop {
   /* Backdrop useful for modal dialogs, lightens up to make shadows visible in dark mode. */
   @apply backdrop:bg-gray-500/30 backdrop:backdrop-brightness-50;
