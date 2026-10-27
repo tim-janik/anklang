@@ -4,7 +4,9 @@
 #include <ase/path.hh>
 #include <ase/storage.hh>
 #include <ase/testing.hh>
+#include <signal.h>
 #include <unistd.h>
+#include <sys/resource.h>
 #include <sys/stat.h>
 
 namespace {
@@ -25,6 +27,23 @@ struct ProjectFiles {
     anklang_cachedir_cleanup (root);
   }
 };
+
+static Error
+with_file_size_limit (rlim_t size, const std::function<Error()> &write)
+{
+  struct rlimit previous = {};
+  struct sigaction ignored = {}, previous_action = {};
+  ignored.sa_handler = SIG_IGN;
+  sigemptyset (&ignored.sa_mask);
+  TASSERT (getrlimit (RLIMIT_FSIZE, &previous) == 0);
+  const struct rlimit limit = { std::min (size, previous.rlim_cur), previous.rlim_max };
+  TASSERT (sigaction (SIGXFSZ, &ignored, &previous_action) == 0);
+  TASSERT (setrlimit (RLIMIT_FSIZE, &limit) == 0);
+  const Error error = write();
+  TASSERT (setrlimit (RLIMIT_FSIZE, &previous) == 0);
+  TASSERT (sigaction (SIGXFSZ, &previous_action, nullptr) == 0);
+  return error;
+}
 
 static String
 saved_xml (const String &dir)
@@ -186,6 +205,36 @@ project_save_backups()
   project->discard();
 }
 TEST_ADD (project_save_backups);
+
+static void
+project_save_close_errors()
+{
+  ProjectFiles files;
+  const String archive = Path::join (files.root, "close-error.anklang");
+  // Small and large central directories fail in fclose() and fwrite(), respectively.
+  for (const size_t name_size : { 16, 8192 })
+    {
+      StorageWriter writer;
+      TASSERT (!writer.open_with_mimetype (archive, "application/x-anklang"));
+      TASSERT (!writer.store_file_data (String (name_size, 'x'), "data"));
+      const Error error = with_file_size_limit (Path::file_size (archive), [&] { return writer.close(); });
+      TASSERT (!!error && !Path::check (archive, "e"));
+    }
+  ProjectP project = Server::instance().create_project ("");
+  TASSERT (!project->save_project ("Write Errors"));
+  const String dir = project->project_dir(), target = Path::join (dir, "project.anklang");
+  const String previous = Path::stringread (target);
+  project->bpm (137.5);
+  const Error error = with_file_size_limit (0, [&] { return project->save_project (""); });
+  TASSERT (!!error && Path::stringread (target) == previous);
+  StringS temporary;
+  Path::glob (Path::join (Path::glob_escape (dir), ".project.anklang-*"), temporary);
+  TASSERT (temporary.empty());
+  TASSERT (!project->save_project (""));
+  TASSERT (Path::stringread (target) != previous);
+  project->discard();
+}
+TEST_ADD (project_save_close_errors);
 
 static void
 project_unnamed_directory()

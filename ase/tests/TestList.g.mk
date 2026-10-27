@@ -57,6 +57,7 @@ ASE_TEST_LIST := \
   project_playback_state \
   project_save_as \
   project_save_backups \
+  project_save_close_errors \
   project_save_open \
   project_tempo_values \
   project_track_management \
