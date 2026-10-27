@@ -138,8 +138,7 @@ async function activate (project, uri, event)
   let u, v;
   switch (uri) {
     case 'quit_discard':
-      window.close();
-      break;
+      return discard_and_close (project);
     case 'quit':
       v = App.async_button_dialog ("Save Project?",
                                    "The current project may contain unsaved changes.\n" +
@@ -151,9 +150,9 @@ async function activate (project, uri, event)
                                    'QUESTION');
       v = await v;
       if (v == 0)
-        return window_close();
+        return discard_and_close (project);
       if (v == 2 && await save_project (project))
-        return window_close();
+        return App.close_window();
       break;
     case 'about':
       Shell.show_about_dialog (true);
@@ -202,13 +201,14 @@ async function activate (project, uri, event)
   }
 }
 
-function window_close()
+async function discard_and_close (project)
 {
-  window.close();
-  // when we're running in the browser, window.close() might not work, so...
-  setTimeout (() => {
-    window.location.href = 'about:blank';
-  }, 0);
+  try {
+    if (await project.$refetch (() => project.unnamed))
+      await project.remove_project_dir();
+  } finally {
+    App.close_window();
+  }
 }
 
 async function open_file() {

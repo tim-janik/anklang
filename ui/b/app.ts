@@ -222,6 +222,14 @@ export class AppClass {
     Shell.hide_spinner();
     return error;
   }
+  close_window()
+  {
+    window.close();
+    // When running in the browser, window.close() might not work.
+    setTimeout (() => {
+      window.location.href = 'about:blank';
+    }, 0);
+  }
   status (...args: any[])
   {
     console.log (...args);

@@ -289,6 +289,89 @@ async function test_file_menu_replaces_project (): Promise<boolean>
 }
 sub_tests.push (['file_menu_replaces_project', test_file_menu_replaces_project]);
 
+async function test_quit_project (): Promise<boolean>
+{
+  const app = window.App, shell = window.Shell, old_project = shell.project, send = Ase.Jsonipc.send;
+  const projects = [];
+  try {
+    for (const scenario of [
+      { unnamed: true, choice: 0, error: Ase.Error.NONE },
+      { unnamed: false, choice: 0, error: Ase.Error.NONE },
+      { unnamed: true, choice: 0, error: Ase.Error.FILE_WRITE_FAILED },
+      { unnamed: true, choice: 1, error: Ase.Error.NONE },
+      { unnamed: true, choice: 2, error: Ase.Error.NONE },
+    ]) {
+      const project = await Ase.server.create_project ('Quit test');
+      projects.push (project);
+      let closes = 0, removals = 0, saves = 0, prompted = false, notice = '', resolve_removal;
+      const restore = [
+        stub (app, 'close_window', () => { closes++; }),
+        stub (app, 'async_button_dialog', async () => { prompted = true; return scenario.choice; }),
+        stub (shell, 'show_notice', message => { notice = message; }),
+        stub (shell, 'async_modal_dialog', async setup => {
+          const div = document.createElement ('div');
+          setup.div_handler (div);
+          div.querySelector<HTMLInputElement> ('input')!.value = 'Quit saved';
+          return 1;
+        }),
+      ];
+      Ase.Jsonipc.send = function (method, params) {
+        if (params[0] === project) {
+          if (method === 'get/unnamed')
+            return Promise.resolve (scenario.unnamed);
+          if (method === 'remove_project_dir') {
+            removals++;
+            return new Promise (resolve => { resolve_removal = resolve; });
+          }
+          if (method === 'save_project') {
+            saves++;
+            return Promise.resolve (Ase.Error.NONE);
+          }
+        }
+        return send.call (this, method, params);
+      };
+      try {
+        await app.load_project (project);
+        await Dom.ui_next_frame();
+        document.querySelector<HTMLButtonElement> ('#g-filemenu button[uri="quit"]')!.click();
+        for (let frame = 0; frame < 120 && !prompted; frame++)
+          await Dom.ui_next_frame();
+        if (!prompted)
+          throw new Error ('Quit did not ask whether to save');
+        const removing = scenario.unnamed && scenario.choice === 0;
+        if (removing) {
+          for (let frame = 0; frame < 120 && !resolve_removal; frame++)
+            await Dom.ui_next_frame();
+          if (!resolve_removal || closes)
+            throw new Error ('Quit did not wait for directory removal');
+          resolve_removal (scenario.error);
+        }
+        if (scenario.choice !== 1)
+          for (let frame = 0; frame < 120 && !closes && !notice; frame++)
+            await Dom.ui_next_frame();
+        await Dom.ui_next_frame();
+        const closing = scenario.choice === 0 || scenario.choice === 2;
+        if (removals !== Number (removing) || closes !== Number (closing) || saves !== Number (scenario.choice === 2))
+          throw new Error ('Quit removed, saved or closed the wrong project');
+      } finally {
+        if (resolve_removal) {
+          resolve_removal (Ase.Error.NONE);
+          for (let frame = 0; frame < 120 && !closes; frame++)
+            await Dom.ui_next_frame();
+        }
+        Ase.Jsonipc.send = send;
+        restore.forEach (undo => undo());
+      }
+    }
+  } finally {
+    await app.load_project (old_project);
+    for (const project of projects)
+      await project.discard();
+  }
+  return true;
+}
+sub_tests.push (['quit_project', test_quit_project]);
+
 async function test_overlapping_activation (): Promise<boolean>
 {
   const app = window.App;
