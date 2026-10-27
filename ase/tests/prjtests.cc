@@ -2,10 +2,32 @@
 #include <ase/project.hh>
 #include <ase/clip.hh>
 #include <ase/track.hh>
+#include <ase/path.hh>
+#include <ase/platform.hh>
+#include <ase/storage.hh>
+#include <ase/unicode.hh>
+#include <ase/websocket.hh>
+#include <ase/logging.hh>
 #include <ase/testing.hh>
+#include <unistd.h>
+#include <glib.h>
 
 namespace { // Anon
 using namespace Ase;
+
+struct TestEnvironment {
+  String key, previous;
+  bool existed;
+  TestEnvironment (const String &name, const String &value) :
+    key (name), previous (getenv (name.c_str()) ?: ""), existed (getenv (name.c_str()))
+  {
+    TASSERT (setenv (key.c_str(), value.c_str(), 1) == 0);
+  }
+  ~TestEnvironment()
+  {
+    TASSERT ((existed ? setenv (key.c_str(), previous.c_str(), 1) : unsetenv (key.c_str())) == 0);
+  }
+};
 
 static void
 project_creation()
@@ -83,6 +105,116 @@ project_creation()
   project2->discard();
 }
 TEST_ADD (project_creation);
+
+static void
+project_dir_lifetime()
+{
+  ProjectImplP project = ProjectImpl::create ("ProjectDir");
+  TASSERT (project->project_dir (false).empty());
+  String dir = project->project_dir (true);
+  if (dir.empty())
+    {
+      TASSERT (project->project_dir (false).empty());
+      dir = project->project_dir (true);
+    }
+  TASSERT (Path::check (Path::join (dir, ".anklang.project"), "f"));
+  TASSERT (project->project_dir (false) == dir);
+  const String snapshot = Path::join (dir, "autosave/snapshot");
+  TASSERT (Path::stringwrite (snapshot, "unsaved state", true));
+  project->discard();
+  project.reset();
+  TASSERT (Path::stringread (snapshot) == "unsaved state");
+  TASSERT (Path::check (Path::join (dir, ".anklang.project"), "f"));
+}
+TEST_ADD (project_dir_lifetime);
+
+static void
+project_dir_exit_child()
+{
+  ProjectImplP project = ProjectImpl::create ("Exit");
+  const String dir = project->project_dir (true);
+  TASSERT (!dir.empty());
+  TASSERT (Path::stringwrite (Path::join (dir, "autosave/snapshot"), "exit state", true));
+  project->discard();
+}
+TEST_ADD (project_dir_exit_child);
+
+static void
+project_dir_exit()
+{
+  const String root = anklang_cachedir_create();
+  TASSERT (!root.empty());
+  const String projects = Path::join (root, "projects");
+  StringS args = { "env", "ANKLANG_PROJECTS_DIR=" + projects, executable_path(),
+                   "--norc", "--no-devices", "--test=project_dir_exit_child" };
+  std::vector<char*> argv;
+  for (String &arg : args)
+    argv.push_back (arg.data());
+  argv.push_back (nullptr);
+  int status = -1;
+  TASSERT (g_spawn_sync (nullptr, argv.data(), nullptr, G_SPAWN_SEARCH_PATH, nullptr, nullptr, nullptr, nullptr, &status, nullptr));
+  TASSERT (status == 0);
+  TASSERT (Path::stringread (Path::join (projects, "Exit/autosave/snapshot")) == "exit state");
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_dir_exit);
+
+static void
+project_dir_roots()
+{
+  const String root = anklang_cachedir_create();
+  TASSERT (!root.empty());
+  PropertyP setting = Server::instance().access_preference ("anklang-projects-dir");
+  TASSERT (setting);
+  const Value previous = setting->value();
+  {
+    TestEnvironment projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "env"));
+    setting->value (Path::join (root, "setting"));
+    const StringS expected = { "env", "setting" };
+    for (size_t i = 0; i < expected.size(); i++)
+      {
+        ProjectImplP project = ProjectImpl::create ("Roots");
+        TASSERT (project->project_dir (false).empty());
+        const String dir = project->project_dir (true);
+        TASSERT (dir == Path::join (root, expected[i], "Roots"));
+        TASSERT (setenv ("ANKLANG_PROJECTS_DIR", "", 1) == 0);
+        project->name ("Renamed");
+        TASSERT (project->project_dir (true) == dir);
+        project->discard();
+      }
+  }
+  setting->value (previous);
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_dir_roots);
+
+static void
+project_dir_names()
+{
+  const String root = anklang_cachedir_create();
+  TASSERT (!root.empty());
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", root);
+  for (const String &suffix : StringS { "", "(1)", "(2)" })
+    {
+      ProjectImplP project = ProjectImpl::create ("Same Name");
+      TASSERT (project->project_dir (true) == Path::join (root, "Same Name" + suffix));
+      project->discard();
+    }
+  const String blocked = Path::join (root, "Blocked");
+  TASSERT (Path::stringwrite (blocked, "keep this file"));
+  ProjectImplP project = ProjectImpl::create ("Blocked");
+  TASSERT (project->project_dir (true) == blocked + "(1)");
+  TASSERT (Path::stringread (blocked) == "keep this file");
+  project->discard();
+  for (const String &name : StringS { "", ".", "..", "../escape", "a/b\\c" })
+    {
+      ProjectImplP project = ProjectImpl::create (name);
+      TASSERT (Path::dircontains (root, project->project_dir (true)));
+      project->discard();
+    }
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_dir_names);
 
 static void
 project_tempo_values()
@@ -711,6 +843,126 @@ clip_creation()
   project->discard();
 }
 TEST_ADD (clip_creation);
+
+static void
+track_insert_wave_clip()
+{
+  ProjectImplP project = ProjectImpl::create ("WaveClip");
+  TrackP track = project->create_track();
+  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  ClipP clip = track->insert_wave_clip ("Piano", sample, 1);
+  TASSERT (clip && clip->position().time.start == 1 && clip->position().time.end > 1);
+  const String samples = Path::join (project->project_dir (false), "samples");
+  auto links = [&] { StringS files; Path::glob (Path::join (samples, "*"), files); return files.size(); };
+  const String link = Path::join (samples, Path::basename (sample));
+  TASSERT (Path::check (link, "L") && Path::equals (link, sample) && links() == 1);
+  TASSERT (clip->original_file() == link);
+  // A link to the same file is reused
+  TASSERT (track->insert_wave_clip ("Again", sample, 5)->original_file() == link && links() == 1);
+  // A name clash adds a counter
+  const String tmpdir = anklang_cachedir_create(), copy = Path::join (tmpdir, Path::basename (sample));
+  const String link1 = Path::join (samples, "000_Acoustic_Grand_Piano_acpiano_0(1).ogg");
+  TASSERT (Path::copy_file (sample, copy));
+  TASSERT (track->insert_wave_clip ("Copy", copy, 9)->original_file() == link1 && links() == 2);
+  TASSERT (Path::equals (link1, copy));
+  // Files in the project dir need no link
+  const String inside = Path::join (project->project_dir (false), "inside.ogg");
+  TASSERT (Path::copy_file (sample, inside));
+  TASSERT (track->insert_wave_clip ("Inside", inside, 13)->original_file() == inside && links() == 2);
+  const String correct = Path::join (tmpdir, "real/piano.ogg"), decoy = Path::join (tmpdir, "piano.ogg");
+  const String child = Path::join (tmpdir, "real/child"), shortcut = Path::join (tmpdir, "shortcut");
+  TASSERT (Path::mkdirs (child));
+  TASSERT (Path::copy_file (sample, correct) && Path::copy_file (sample, decoy));
+  TASSERT (symlink (child.c_str(), shortcut.c_str()) == 0);
+  ClipP through_link = track->insert_wave_clip ("Parent", Path::join (shortcut, "../piano.ogg"), 15);
+  TASSERT (through_link && Path::equals (through_link->original_file(), correct));
+  TASSERT (!Path::equals (through_link->original_file(), decoy));
+  for (const String &dir : StringS { tmpdir, project->project_dir (false) })
+    {
+      const String native = Path::join (dir, "piano\x80.ogg");
+      TASSERT (Path::copy_file (sample, native));
+      ClipP bytes = track->insert_wave_clip ("Bytes", encodefs (native), 17);
+      TASSERT (bytes && Path::equals (bytes->original_file(), native));
+      TASSERT (WebSocketServer::utf8_validate (bytes->original_file()));
+      ClipP again = track->insert_wave_clip ("BytesAgain", encodefs (native), 19);
+      TASSERT (again && again->original_file() == bytes->original_file());
+    }
+  // Clips without a file
+  TASSERT (track->create_midi_clip ("Midi", 20, 1)->original_file().empty());
+  TASSERT (track->create_audio_clip ("Audio", 22, 1)->original_file().empty());
+  project->discard();
+  TASSERT (Path::check (sample, "f") && Path::check (copy, "f"));
+  anklang_cachedir_cleanup (tmpdir);
+}
+TEST_ADD (track_insert_wave_clip);
+
+static void
+track_insert_wave_clip_symlink_project_dir()
+{
+  const String root = anklang_cachedir_create();
+  TASSERT (!root.empty());
+  const String real = Path::join (root, "real"), link = Path::join (root, "link");
+  TASSERT (Path::mkdirs (real));
+  TASSERT (symlink (real.c_str(), link.c_str()) == 0);
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", Path::join (link, "projects"));
+  track_insert_wave_clip();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (track_insert_wave_clip_symlink_project_dir);
+
+static void
+track_insert_wave_clip_invalid_file()
+{
+  ProjectImplP project = ProjectImpl::create ("InvalidWaveClip");
+  TrackP track = project->create_track();
+  const String dir = project->project_dir (true), samples = Path::join (dir, "samples");
+  const String root = anklang_cachedir_create();
+  TASSERT (!dir.empty() && !root.empty());
+  const String invalid = Path::join (root, "invalid.ogg"), existing = Path::join (samples, "existing.ogg");
+  const String source = Path::join (root, "existing.ogg"), internal = Path::join (dir, "internal.ogg");
+  TASSERT (Path::stringwrite (invalid, "not audio"));
+  TASSERT (Path::stringwrite (source, "not audio") && Path::stringwrite (internal, "not audio"));
+  TASSERT (Path::mkdirs (samples));
+  TASSERT (symlink (source.c_str(), existing.c_str()) == 0);
+  const bool fatal_warnings = logging_fatal_warnings;
+  for (const String &file : StringS { "", Path::join (root, "missing.ogg"), root, invalid, source, existing, internal })
+    {
+      logging_fatal_warnings = false;
+      ClipP clip = track->insert_wave_clip ("Invalid", file, 0);
+      logging_fatal_warnings = fatal_warnings;
+      TASSERT (!clip && track->all_clips().empty());
+      StringS files;
+      Path::glob (Path::join (samples, "*"), files);
+      TASSERT (files == StringS { existing });
+    }
+  TASSERT (Path::check (existing, "L") && Path::check (invalid, "f") && Path::check (internal, "f"));
+  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  const String valid = Path::join (root, "valid/invalid.ogg");
+  TASSERT (Path::mkdirs (Path::dirname (valid)) && Path::copy_file (sample, valid));
+  ClipP clip = track->insert_wave_clip ("Valid", valid, 0);
+  TASSERT (clip && clip->original_file() == Path::join (samples, "invalid.ogg"));
+  project->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (track_insert_wave_clip_invalid_file);
+
+static void
+track_all_clips()
+{
+  ProjectImplP project = ProjectImpl::create ("TrackClips");
+  TrackP track = project->create_track();
+  uint notifications = 0;
+  auto connection = track->on_event ("notify:all_clips", [&] (const Event&) { notifications++; });
+  ClipP midi = track->create_midi_clip ("Midi", 0, 2);
+  ClipP audio = track->create_audio_clip ("Audio", 2, 2);
+  TASSERT (track->all_clips() == ClipS ({ midi, audio }) && notifications >= 2);
+  TASSERT (track->launcher_clips() == ClipS ({ midi }));
+  notifications = 0;
+  audio->remove_self();
+  TASSERT (track->all_clips() == ClipS ({ midi }) && notifications > 0);
+  project->discard();
+}
+TEST_ADD (track_all_clips);
 
 static void
 clip_audio_notes_read_only()

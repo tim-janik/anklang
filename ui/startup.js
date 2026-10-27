@@ -216,31 +216,20 @@ async function bootup () {
 	}
     }
 
-  // Clear temporary files if *not* in script mode
-  if (CONFIG.mainjs && !CONFIG.uiscript)
-    {
-      const ms = 2000;
-      console.bootlog ("Will clean Ase cachedirs in", ms + "ms...");
-      setTimeout (async () => {
-        await Ase.server.purge_stale_cachedirs();
-        // debug ("Cleaned Ase cachedirs...");
-      }, ms);
-    }
-
   // Test integrity
   if (__DEV__)
     await self_tests();
 
-  // UI testing
+  // UI testing and interactive cache cleanup
   if (Ase.server) {
     const config = await Ase.server.ui_config();
+    const js = await Ase.server.ui_js_fetch();
     if (config.has_ui_tests)
       setTimeout (() => run_ui_tests(), 17);
-  }
+    else if (!CONFIG.uiscript && !js)
+      setTimeout (() => Ase.server.purge_cachedirs(), 2000);
 
-  // Run --ui-js and close on completion unless the script opts out
-  if (Ase.server) {
-    const js = await Ase.server.ui_js_fetch();
+    // Run --ui-js and close on completion unless the script opts out
     if (js) {
       let auto_close = true;
       window.auto_close = enabled => { auto_close = enabled !== false; };

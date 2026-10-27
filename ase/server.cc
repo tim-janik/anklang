@@ -10,6 +10,7 @@
 #include "utils.hh"
 #include "project.hh"
 #include "path.hh"
+#include "storage.hh"
 #include "sndfile.hh"
 #include "wave.hh"
 #include "internal.hh"
@@ -163,6 +164,12 @@ String
 ServerImpl::ui_js_fetch ()
 {
   return App.ui_js;
+}
+
+void
+ServerImpl::purge_cachedirs ()
+{
+  anklang_cachedir_clean_stale();
 }
 
 ServerImplP

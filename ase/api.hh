@@ -260,6 +260,8 @@ public:
   virtual void      volume         (float db) = 0; ///< Set clip volume in dB, emits `notify:volume`.
   virtual float     pan            () const = 0; ///< Get audio clip pan (-1.0 to 1.0), 0 for other clips.
   virtual void      pan            (float pan) = 0; ///< Set audio clip pan (-1.0 to 1.0), emits `notify:pan`, does nothing for other clips.
+  virtual String    original_file  () const = 0; ///< Path of the file an audio clip plays, empty for other clips, changes on `notify:original_file`.
+  virtual void      original_file  (const String&) = 0; ///< Read-only, assignments warn.
   virtual ClipNoteS all_notes      () const = 0;
   virtual void      all_notes      (const ClipNoteS &notes) = 0;
   virtual ClipPosition position    () const = 0;
@@ -292,9 +294,12 @@ public:
   virtual float           pan                 () const = 0;          ///< Get track pan (-1.0 to 1.0).
   virtual void            pan                 (float pan) = 0;       ///< Set track pan (-1.0 to 1.0).
   virtual ClipS           launcher_clips      () const = 0;          ///< Retrieve the list of clips that can be directly played; changes on `notify:launcher_clips`.
-  virtual void            launcher_clips      (const ClipS &) = 0;   ///< NOP setter, assignments are ignored.
+  virtual void            launcher_clips      (const ClipS &) = 0;   ///< Read-only, assignments warn.
+  virtual ClipS           all_clips           () const = 0;          ///< List all clips of this track, changes on `notify:all_clips`.
+  virtual void            all_clips           (const ClipS &) = 0;   ///< Read-only, assignments warn.
   virtual ClipP           create_midi_clip    (const String &name, double start, double length) = 0; ///< Create a new MIDI clip on this track.
   virtual ClipP           create_audio_clip   (const String &name, double start, double length) = 0; ///< Create a new audio clip on this track.
+  virtual ClipP           insert_wave_clip    (const String &name, const String &utf8filename, double start) = 0; ///< Insert an audio clip at `start` seconds that plays a file.
   virtual PluginP         create_plugin       (const String &type) = 0; ///< Create a new plugin on this track by type identifier.
   virtual PluginS         list_plugins        () = 0;                ///< List plugins on this track.
   virtual DeviceP         access_device       () = 0;                ///< Retrieve Device handle for this track.
@@ -380,7 +385,7 @@ public:
   virtual Resource  folder          () const = 0;                       ///< Describe current folder.
   virtual void      folder          (const Resource &newfolder) = 0;
   virtual ResourceS entries         () const = 0;                       ///< List entries of a folder.
-  virtual void      entries         (const ResourceS &newentries) = 0;
+  virtual void      entries         (const ResourceS &newentries) = 0; ///< Read-only, assignments warn.
   using String2 = std::pair<String,String>;
   virtual String2   assign          (const String &utf8path,
                                      bool existingfile = false) = 0;    ///< Move to a different path.
@@ -434,6 +439,7 @@ public:
   virtual String    ui_test_fetch     () = 0;                    ///< Fetch next UI test name to run (empty if none).
   virtual void      ui_test_report    (const String &testname, bool success) = 0; ///< Report UI test result.
   virtual String    ui_js_fetch       () = 0;                    ///< Fetch UI JS script to run (empty if none).
+  virtual void      purge_cachedirs   () = 0;                    ///< Remove the cache dirs of processes that are gone.
   String            engine_stats      ();                        ///< Print engine state.
   void              exit_program      (int status = 0);          ///< End program (without saving).
   // projects

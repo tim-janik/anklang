@@ -43,6 +43,11 @@ ASE_TEST_LIST := \
   plugin_creation \
   plugin_name \
   project_creation \
+  project_dir_exit \
+  project_dir_exit_child \
+  project_dir_lifetime \
+  project_dir_names \
+  project_dir_roots \
   project_length \
   project_name_notifications \
   project_playback_state \
@@ -71,14 +76,19 @@ ASE_TEST_LIST := \
   string_tests \
   test_audio_sample_load \
   test_serializable_hierarchy \
+  track_all_clips \
   track_control_classification \
   track_fixed_names \
   track_hidden \
+  track_insert_wave_clip \
+  track_insert_wave_clip_invalid_file \
+  track_insert_wave_clip_symlink_project_dir \
   track_mute_solo \
   track_name \
   track_outlives_project \
   track_parameter_values \
   track_volume_pan \
+  trkn_no_user_name \
   unicode_displayfs_tests \
   unicode_tests \
   utf8_codepoint_bench \

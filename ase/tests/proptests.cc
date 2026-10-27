@@ -1,6 +1,8 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include <ase/project.hh>
 #include <ase/jsonapi.hh>
+#include <ase/platform.hh>
+#include <ase/path.hh>
 #include <ase/testing.hh>
 
 namespace { // Anon
@@ -40,7 +42,6 @@ struct LoopProject {
   Jsonipc::InstanceMap imap;
   Jsonipc::IpcDispatcher dispatcher;
   ProjectImplP project = ProjectImpl::create ("PropertyLoop");
-  ClipP audio_clip;
   std::vector<Object> objects;
   std::set<String> notified;
   std::map<String,String> property_labels;
@@ -49,7 +50,7 @@ struct LoopProject {
   {
     TrackP track = project->create_track();
     ClipP midi_clip = track->create_midi_clip ("MidiClip", 1, 2);
-    audio_clip = track->create_audio_clip ("AudioClip", 4, 2);
+    ClipP audio_clip = track->create_audio_clip ("AudioClip", 4, 2);
     PluginP plugin = track->create_plugin ("4osc");
     PluginP text_plugin = track->create_plugin ("text");
     PluginP insert_plugin = track->create_plugin ("insert");
@@ -64,7 +65,7 @@ struct LoopProject {
     for (TrackP t : project->all_tracks())
       {
         add (t->is_control_track() && t->name() == "Chord" ? "ChordTrack" : "", t);
-        for (ClipP c : t->launcher_clips())
+        for (ClipP c : t->all_clips())
           add ("", c);
         for (PluginP p : t->list_plugins())
           add ("", p);
@@ -157,7 +158,7 @@ struct LoopProject {
         const String self = read_object (values, label, track);
         read (values, label, self, "list_plugins", "list_plugins");
         size_t ci = 0, pi = 0;
-        for (const auto &clip : track->launcher_clips())
+        for (const auto &clip : track->all_clips())
           {
             const String clabel = string_format ("%s.Clip[%u]", label, uint (ci++));
             const String cself = read_object (values, clabel, clip);
@@ -166,7 +167,6 @@ struct LoopProject {
         for (const auto &plugin : track->list_plugins())
           read_object (values, string_format ("%s.Plugin[%u]", label, uint (pi++)), plugin);
       }
-    read_object (values, "AudioClip", audio_clip);
     return values;
   }
 };
@@ -333,6 +333,14 @@ static const std::map<String,Change> method_checks = {
   { "Track.create_audio_clip", [] (LoopProject &lp) {
     lp.call ("create_audio_clip", lp.ref ("Track"), "\"New Audio Clip\",8,2");
   } },
+  { "Track.insert_wave_clip", [] (LoopProject &lp) {
+    const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+    const String file = Path::join (lp.project->project_dir (true), "piano\"\\.ogg");
+    TASSERT (Path::copy_file (sample, file));
+    rapidjson::Document doc;
+    const String path_json = Jsonipc::jsonvalue_to_string (Jsonipc::to_json (file, doc.GetAllocator()));
+    lp.call ("insert_wave_clip", lp.ref ("Track"), "\"Wave Clip\"," + path_json + ",8");
+  } },
   { "Track.create_plugin", [] (LoopProject &lp) { lp.call ("create_plugin", lp.ref ("Track"), "\"4osc\""); } },
   { "Gadget.remove_self/Track", [] (LoopProject &lp) { lp.call ("remove_self", lp.ref ("Track")); } },
   { "Gadget.remove_self/MidiClip", [] (LoopProject &lp) { lp.call ("remove_self", lp.ref ("MidiClip")); } },
@@ -342,8 +350,6 @@ static const std::map<String,Change> method_checks = {
 
 static const std::map<String,String> exempt_methods = {
   { "Clip.change_batch",           "Special note-editing flow, deferred to its planned rewrite in #141." },
-  { "Gadget.remove_self/Track",    "Audio clip handles cannot be reacquired on undo." },
-  { "Gadget.remove_self/AudioClip", "Audio clips have no API list, so restored clips cannot be reacquired." },
   { "Gadget.remove_self/Plugin",   "Undo reuses the plugin's invalidated API handle." },
   { "Emittable.emit_event",        "Event delivery, not project data." },
   { "Emittable.emit_notify",       "Event delivery, not project data." },

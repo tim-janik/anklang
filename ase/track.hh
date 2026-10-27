@@ -47,6 +47,8 @@ public:
   StringS         read_only_properties () const override;
   ClipS           launcher_clips    () const override;
   void            launcher_clips    (const ClipS &) override;
+  ClipS           all_clips         () const override;
+  void            all_clips         (const ClipS &) override;
   DeviceP         access_device     () override;
   MonitorP        create_monitor    (int32 ochannel) override;
   ssize_t         clip_index        (const ClipImpl &clip) const;
@@ -55,6 +57,7 @@ public:
   enum { NONE = -1 };
   ClipP           create_midi_clip  (const String &name, double start, double length) override;
   ClipP           create_audio_clip (const String &name, double start, double length) override;
+  ClipP           insert_wave_clip  (const String &name, const String &utf8filename, double start) override;
   PluginP         create_plugin     (const String &type) override;
   PluginS         list_plugins      () override;
   static TrackImplP from_trkn (tracktion::Track&);

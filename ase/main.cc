@@ -12,6 +12,7 @@
 #include "server.hh"
 #include "internal.hh"
 #include "testing.hh"
+#include "storage.hh"
 
 #include <limits.h>
 #include <stdlib.h>
@@ -348,6 +349,13 @@ make_auth_string()
 static void
 run_tests_and_quit ()
 {
+  const char *anklang_projects_dir = getenv ("ANKLANG_PROJECTS_DIR");
+  if (!anklang_projects_dir || !anklang_projects_dir[0])
+    {
+      const String root = anklang_cachedir_create();
+      if (root.empty() || setenv ("ANKLANG_PROJECTS_DIR", root.c_str(), 1) != 0)
+        fatal_error ("failed to create the test projects root");
+    }
   if (check_test_names.empty())
     Test::run();
   else

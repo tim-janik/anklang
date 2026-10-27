@@ -7,8 +7,11 @@
 #include "plugin.hh"
 #include "server.hh"
 #include "main.hh"
+#include "path.hh"
+#include "unicode.hh"
 #include "jsonipc/jsonipc.hh"
 #include "internal.hh"
+#include <unistd.h>
 
 namespace te = tracktion::engine;
 
@@ -88,24 +91,30 @@ public:
     asetrack_.update_telemetry();
   }
   void
+  notify_clips ()
+  {
+    asetrack_.emit_notify ("launcher_clips");
+    asetrack_.emit_notify ("all_clips");
+  }
+  void
   valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
   {
     if (parent == track_state_ && te::Clip::isClipState (child))
-      asetrack_.emit_notify ("launcher_clips");
+      notify_clips();
   }
   void
   valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree &child, int) override
   {
     if (parent == track_state_ && te::Clip::isClipState (child))
-      asetrack_.emit_notify ("launcher_clips");
+      notify_clips();
   }
   void valueTreeParentChanged (juce::ValueTree&) override {}
   void
   valueTreeChildOrderChanged (juce::ValueTree &parent, int, int newIndex) override
   {
-    // Reordering clips changes launcher_clips() return order, so emit like add/remove
+    // Reordering clips changes the order of the clip lists, so emit like add/remove
     if (parent == track_state_ && te::Clip::isClipState (parent.getChild (newIndex)))
-      asetrack_.emit_notify ("launcher_clips");
+      notify_clips();
   }
 };
 
@@ -316,7 +325,7 @@ TrackImpl::pan (float pan)
 StringS
 TrackImpl::read_only_properties() const
 {
-  StringS props = { "launcher_clips" };
+  StringS props = { "all_clips", "launcher_clips" };
   auto t = track_.get();
   if (t && trkn_fixed_name (*t))
     props.push_back ("name");
@@ -343,8 +352,23 @@ TrackImpl::launcher_clips() const
 void
 TrackImpl::launcher_clips (const ClipS &)
 {
-  // NOP setter: assignments are ignored; clip add/remove is driven by the
-  // backend and emits `notify:launcher_clips` via TrackStateListener.
+  warning ("Track.launcher_clips is read-only");
+}
+
+ClipS
+TrackImpl::all_clips() const
+{
+  ClipS clips;
+  if (auto ct = dynamic_cast<te::ClipTrack*> (track_.get()))
+    for (auto *clip : ct->getClips())
+      clips.push_back (ClipImpl::from_trkn (*clip));
+  return clips;
+}
+
+void
+TrackImpl::all_clips (const ClipS &)
+{
+  warning ("Track.all_clips is read-only");
 }
 
 ssize_t
@@ -505,6 +529,42 @@ TrackImpl::create_audio_clip (const String &name, double start, double length)
   else
     warning ("track_.get() returned null");
   return nullptr;
+}
+
+ClipP
+TrackImpl::insert_wave_clip (const String &name, const String &utf8filename, double start)
+{
+  auto at = dynamic_cast<te::AudioTrack*> (track_.get());
+  if (!at)
+    {
+      warning ("Track.insert_wave_clip: track holds no audio clips: %s", te_type_);
+      return nullptr;
+    }
+  const String file = Path::realpath (Path::abspath (decodefs (utf8filename)));
+  if (utf8filename.empty() || !Path::check (file, "fr"))
+    {
+      warning ("Track.insert_wave_clip: not an audio file: %s", file);
+      return nullptr;
+    }
+  bool linked = false;
+  const String link = project_->link_sample (file, linked);
+  return_unless (!link.empty(), nullptr);
+  te::AudioFile audiofile (at->edit.engine, juce::File (link));
+  if (linked)
+    at->edit.engine.getAudioFileManager().forceFileUpdate (audiofile);
+  if (!audiofile.isValid())
+    {
+      if (linked)
+        unlink (link.c_str());
+      warning ("Track.insert_wave_clip: not an audio file: %s", file);
+      return nullptr;
+    }
+  const te::ClipPosition position = { { tracktion::TimePosition::fromSeconds (start),
+                                        tracktion::TimeDuration::fromSeconds (audiofile.getLength()) }, {} };
+  auto clip = at->insertWaveClip (juce::String (name), juce::File (link), position, false);
+  if (!clip && linked)
+    unlink (link.c_str());
+  return clip ? ClipImpl::from_trkn (*clip) : nullptr;
 }
 
 PluginP

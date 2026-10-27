@@ -14,6 +14,8 @@
 #include "internal.hh"
 #include "devices/liquidsfz/liquidsfzplugin.hh"
 #include <list>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #define UDEBUG(...)     Ase::debug ("undo", __VA_ARGS__)
 
@@ -31,6 +33,10 @@ static Preference synth_latency_pref =
         String ("descr=") + _("Default LICENSE to apply in the project properties."), } });
 
 static std::vector<ProjectImplP> &g_projects = *new std::vector<ProjectImplP>();
+
+static Preference projects_dir_pref ({
+  .ident = "anklang-projects-dir", .label = _("Projects Directory"), .initial = "", .hints = STANDARD,
+});
 
 ProjectP
 Project::last_project()
@@ -327,6 +333,11 @@ ProjectImpl::ProjectImpl()
   }
   if (!edit_ || !transport_listener_)
     fatal_error ("failed to create tracktion::engine::edit");
+  // Tracktion stores clip files relative to the marker in the project dir
+  edit_->editFileRetriever = [this] {
+    const String dir = project_dir (true);
+    return dir.empty() ? juce::File() : juce::File (Path::join (dir, ".anklang.project"));
+  };
 
   if (auto filename = getenv ("SFZ"))
     test_sfz (this, edit_.get(), filename);
@@ -446,9 +457,7 @@ ProjectImpl::discard ()
 {
   return_unless (!discarded_);
   stop_playback();
-  const size_t nerased = Aux::erase_first (g_projects, [this] (auto ptr) { return ptr.get() == this; });
-  if (nerased)
-    {} // resource cleanups
+  Aux::erase_first (g_projects, [this] (auto ptr) { return ptr.get() == this; });
   discarded_ = true;
 }
 
@@ -479,6 +488,92 @@ make_anklang_dir (const String &path)
 {
   String mime = Path::join (path, ".anklang.project");
   return Path::stringwrite (mime, "# ANKLANG(1) project directory\n");
+}
+
+static String
+projects_root()
+{
+  String root = getenv ("ANKLANG_PROJECTS_DIR") ?: "";
+  if (root.empty())
+    root = decodefs (projects_dir_pref.gets());
+  if (root.empty())
+    root = Path::xdg_dir ("PROJECTS", false);
+  if (root.empty())
+    {
+      String documents = getenv ("XDG_DOCUMENTS_DIR") ?: "";
+      if (documents.empty())
+        documents = Path::xdg_dir ("DOCUMENTS");
+      root = Path::join (documents, "Anklang");
+    }
+  return Path::abspath (Path::expand_tilde (root));
+}
+
+/// Persistent directory for this project's files, made on first use if `create` is true.
+String
+ProjectImpl::project_dir (bool create)
+{
+  if (project_dir_.empty() && create)
+    {
+      const String root = projects_root();
+      String basename = name(), dir;
+      for (char &c : basename)
+        if (c == '/' || c == '\\' || uint8_t (c) < 32 || c == 127)
+          c = '_';
+      if (basename.empty() || basename == "." || basename == "..")
+        basename = "Untitled";
+      if (Path::mkdirs (root))
+        for (uint i = 0; ; i++)
+          {
+            const String candidate = Path::join (root, i ? string_format ("%s(%u)", basename, i) : basename);
+            if (mkdir (candidate.c_str(), 0700) == 0)
+              {
+                dir = candidate;
+                break;
+              }
+            if (errno != EEXIST)
+              break;
+          }
+      if (dir.empty() || !make_anklang_dir (dir))
+        {
+          const int err = errno;
+          if (!dir.empty())
+            Path::rmrf (dir);
+          warning ("Project: failed to create project dir: %s", strerror (err));
+          return "";
+        }
+      project_dir_ = dir;
+    }
+  return project_dir_;
+}
+
+/// Path of `file` in the project dir, files from elsewhere get a link in `samples/`.
+String
+ProjectImpl::link_sample (const String &file, bool &created)
+{
+  created = false;
+  const String dir = project_dir (true);
+  return_unless (!dir.empty(), "");
+  String relative;
+  if (Path::dircontains (dir, file, &relative) && juce::CharPointer_UTF8::isValidString (file.c_str(), file.size()))
+    return Path::join (dir, relative);
+  const String samples = Path::join (dir, "samples"), name = encodefs (Path::basename (file));
+  const StringPair parts = Path::split_extension (name, true);
+  if (Path::mkdirs (samples))
+    for (uint i = 0; ; i++)
+      {
+        const String link = Path::join (samples, i ? string_format ("%s(%u)%s", parts.first, i, parts.second) : name);
+        if (Path::equals (link, file))
+          return link;
+        if (symlink (file.c_str(), link.c_str()) == 0)
+          {
+            created = true;
+            return link;
+          }
+        if (errno != EEXIST)
+          break;
+      }
+  warning ("Project: failed to link %s: %s", file, strerror (errno));
+  return "";
 }
 
 Error

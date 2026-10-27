@@ -777,6 +777,10 @@ export class Clip // Ase::Clip
   { return this.$get ("pan", 0.0) as number; }
   set pan (v: number)
   { this.$set ("pan", v); }
+  get original_file (): string
+  { return this.$get ("original_file", '') as string; }
+  set original_file (v: string)
+  { this.$set ("original_file", v); }
   get all_notes (): ClipNote[]
   { return this.$get ("all_notes", []) as ClipNote[]; }
   set all_notes (v: ClipNote[])
@@ -839,10 +843,16 @@ export class Track // Ase::Track
   { return this.$get ("launcher_clips", []) as Clip[]; }
   set launcher_clips (v: Clip[])
   { this.$set ("launcher_clips", v); }
+  get all_clips (): Clip[]
+  { return this.$get ("all_clips", []) as Clip[]; }
+  set all_clips (v: Clip[])
+  { this.$set ("all_clips", v); }
   create_midi_clip (arg1: string, arg2: number, arg3: number): Promise<Clip>
   { return this.$rpc ("create_midi_clip", [this, arg1, arg2, arg3]); }
   create_audio_clip (arg1: string, arg2: number, arg3: number): Promise<Clip>
   { return this.$rpc ("create_audio_clip", [this, arg1, arg2, arg3]); }
+  insert_wave_clip (arg1: string, arg2: string, arg3: number): Promise<Clip>
+  { return this.$rpc ("insert_wave_clip", [this, arg1, arg2, arg3]); }
   create_plugin (arg1: string): Promise<Plugin>
   { return this.$rpc ("create_plugin", [this, arg1]); }
   list_plugins (): Promise<Plugin[]>
@@ -999,6 +1009,8 @@ export class Server // Ase::Server
   { return this.$rpc ("ui_test_report", [this, arg1, arg2]); }
   ui_js_fetch (): Promise<string>
   { return this.$rpc ("ui_js_fetch", [this]); }
+  purge_cachedirs (): Promise<void>
+  { return this.$rpc ("purge_cachedirs", [this]); }
   engine_stats (): Promise<string>
   { return this.$rpc ("engine_stats", [this]); }
   exit_program (arg1: number): Promise<void>

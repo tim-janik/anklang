@@ -96,6 +96,8 @@ public:
       aseclip_.emit_notify ("volume");
     else if (property == tracktion::engine::IDs::pan)
       aseclip_.emit_notify ("pan");
+    else if (property == tracktion::engine::IDs::source)
+      aseclip_.emit_notify ("original_file");
     else
         aseclip_.emit_notify ("notes"); // Simplistic change detection for notes within state
   }
@@ -294,10 +296,23 @@ ClipImpl::pan (float panval)
   aclip->setPan (panval);
 }
 
+String
+ClipImpl::original_file () const
+{
+  auto aclip = dynamic_cast<te::AudioClipBase*> (clip_.get());
+  return aclip ? aclip->getOriginalFile().getFullPathName().toStdString() : "";
+}
+
+void
+ClipImpl::original_file (const String&)
+{
+  warning ("Clip.original_file is read-only");
+}
+
 StringS
 ClipImpl::read_only_properties () const
 {
-  StringS props = { "end_beat", "start_beat" };
+  StringS props = { "end_beat", "original_file", "start_beat" };
   if (!dynamic_cast<te::AudioClipBase*> (clip_.get()))
     props.push_back ("pan");
   if (!dynamic_cast<te::MidiClip*> (clip_.get()))
