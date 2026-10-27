@@ -2,6 +2,7 @@
 // @ts-check
 
 /** @class TrackList
+ * @description
  * SolidJS component for vertical display of Ase.Track instances.
  *
  * ### Props:
