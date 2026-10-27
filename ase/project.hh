@@ -73,15 +73,10 @@ public:
   void                 all_tracks        (const TrackS &) override;
   TrackP               master_track      () override;
   Error                load_project      (const String &utf8filename) override;
-  StreamReaderP        load_blob         (const String &fspath);
-  String               loader_resolve    (const String &hexhash);
   Error                save_project      (const String &utf8filename, bool collect) override;
   String               saved_filename    () override; // returns utf8filename
   String               project_dir       (bool create);
   String               link_sample       (const String &file, bool &created);
-  String               writer_file_name  (const String &fspath) const;
-  Error                writer_add_file   (const String &fspath);
-  Error                writer_collect    (const String &fspath, String *hexhashp);
   TelemetryFieldS      telemetry         () const override;
   static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);

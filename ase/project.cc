@@ -252,7 +252,6 @@ struct ProjectImpl::PStorage {
   String writer_cachedir;
   String anklang_dir;
   StringPairS writer_files;
-  StringPairS asset_hashes;
   PStorage (PStorage **ptrp) :
     ptrp_ (ptrp)
   {
@@ -648,7 +647,6 @@ ProjectImpl::save_project (const String &utf8filename, bool collect)
   // start writing
   anklang_cachedir_clean_stale();
   storage_->writer_cachedir = anklang_cachedir_create();
-  storage_->asset_hashes.clear();
   StorageWriter ws;
   Error error = ws.open_with_mimetype (abs_projectfile, "application/x-anklang");
   if (!error)
@@ -683,89 +681,6 @@ edit_xml (const juce::ValueTree &state)
   format.newLineChars = "\n";
   format.lineWrapLength = std::numeric_limits<int>::max();
   return state.toXmlString (format).toStdString();
-}
-
-String
-ProjectImpl::writer_file_name (const String &fspath) const
-{
-  assert_return (storage_ != nullptr, "");
-  assert_return (!storage_->writer_cachedir.empty(), "");
-  return Path::join (storage_->writer_cachedir, fspath);
-}
-
-Error
-ProjectImpl::writer_add_file (const String &fspath)
-{
-  assert_return (storage_ != nullptr, Error::INTERNAL);
-  assert_return (!storage_->writer_cachedir.empty(), Error::INTERNAL);
-  if (!Path::check (fspath, "frw"))
-    return Error::FILE_NOT_FOUND;
-  if (!string_startswith (fspath, storage_->writer_cachedir))
-    return Error::FILE_OPEN_FAILED;
-  storage_->writer_files.push_back ({ fspath, Path::basename (fspath) });
-  return Error::NONE;
-}
-
-Error
-ProjectImpl::writer_collect (const String &fspath, String *hexhashp)
-{
-  assert_return (storage_ != nullptr, Error::INTERNAL);
-  assert_return (!storage_->anklang_dir.empty(), Error::INTERNAL);
-  if (!Path::check (fspath, "fr"))
-    return Error::FILE_NOT_FOUND;
-  // determine hash of file to collect
-  const String hexhash = string_to_hex (blake3_hash_file (fspath));
-  if (hexhash.empty())
-    return ase_error_from_errno (errno ? errno : EIO);
-  // resolve against existing hashes
-  for (const auto &hf : storage_->asset_hashes)
-    if (std::get<0> (hf) == hexhash)
-      {
-        *hexhashp = hexhash;
-        return Error::NONE;
-      }
-  // file may be within project directory
-  String relpath;
-  if (Path::dircontains (storage_->anklang_dir, fspath, &relpath))
-    {
-      storage_->asset_hashes.push_back ({ hexhash, relpath });
-      *hexhashp = hexhash;
-      return Error::NONE;
-    }
-  // determine unique path name
-  const size_t file_size = Path::file_size (fspath);
-  const String basedir = storage_->anklang_dir;
-  relpath = Path::join ("samples", Path::basename (fspath));
-  String dest = Path::join (basedir, relpath);
-  size_t i = 0;
-  while (Path::check (dest, "e"))
-    {
-      if (file_size == Path::file_size (dest))
-        {
-          const String althash = string_to_hex (blake3_hash_file (dest));
-          if (althash == hexhash)
-            {
-              // found file with same hash within project directory
-              storage_->asset_hashes.push_back ({ hexhash, relpath });
-              *hexhashp = hexhash;
-              return Error::NONE;
-            }
-        }
-      // add counter to create unique name
-      const StringPair parts = Path::split_extension (relpath, true);
-      dest = Path::join (basedir, string_format ("%s(%u)%s", parts.first, ++i, parts.second));
-    }
-  // create parent dir
-  if (!Path::mkdirs (Path::dirname (dest)))
-    return ase_error_from_errno (errno);
-  // copy into project dir
-  const bool copied = Path::copy_file (fspath, dest);
-  if (!copied)
-    return ase_error_from_errno (errno);
-  // success
-  storage_->asset_hashes.push_back ({ hexhash, relpath });
-  *hexhashp = hexhash;
-  return Error::NONE;
 }
 
 String
@@ -822,26 +737,6 @@ ProjectImpl::load_project (const String &utf8filename)
   // jsd contains project state from tracktion_engine (currently {})
   saved_filename_ = storage_->loading_file;
   return Error::NONE;
-}
-
-StreamReaderP
-ProjectImpl::load_blob (const String &fspath)
-{
-  assert_return (storage_ != nullptr, nullptr);
-  assert_return (!storage_->loading_file.empty(), nullptr);
-  return stream_reader_zip_member (storage_->loading_file, fspath);
-}
-
-/// Find file from hash code, returns fspath.
-String
-ProjectImpl::loader_resolve (const String &hexhash)
-{
-  return_unless (storage_ && storage_->asset_hashes.size(), "");
-  return_unless (!storage_->anklang_dir.empty(), "");
-  for (const auto& [hash,relpath] : storage_->asset_hashes)
-    if (hexhash == hash)
-      return Path::join (storage_->anklang_dir, relpath);
-  return "";
 }
 
 String
