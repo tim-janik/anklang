@@ -382,9 +382,9 @@ static const std::map<String,String> exempt_methods = {
   { "Project.pause_playback",      "Transport state, playback has no undo." },
   { "Project.stop_playback",       "Transport state, playback has no undo." },
   { "Project.master_track",        "Master track handle query." },
-  { "Project.save_project",        "File I/O, covered by step 7." },
-  { "Project.saved_filename",      "File name query." },
-  { "Project.load_project",        "File I/O, covered by step 7." },
+  { "Project.save_project",        "File I/O, covered by project persistence tests." },
+  { "Project.save_project_as",     "File I/O, covered by project persistence tests." },
+  { "Project.remove_project_dir",   "File I/O, covered by project persistence tests." },
   { "Project.telemetry",           "Telemetry memory location query." },
   { "Project.group_undo",          "Clip setters and change_batch start their own transactions, splitting explicit undo groups." },
   { "Project.ungroup_undo",        "Undo history control, not a project mutation." },
@@ -436,6 +436,8 @@ method_loop()
           continue;
         }
       LoopProject lp;
+      if (key == "Track.insert_wave_clip")
+        TASSERT (!lp.project->project_dir (true).empty());
       const Snapshot before = lp.snapshot();
       lp.notified.clear();
       change (lp);
