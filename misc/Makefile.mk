@@ -11,6 +11,12 @@ check-agents-md: AGENTS.md misc/check-agents-md.sh misc/test_check_agents_md.py
 .PHONY: check-agents-md
 check: check-agents-md
 
+check-synsmell: misc/test_synsmell.mjs misc/synsmell.ts | node_modules/.npm.done
+	$(QCHECK)
+	$Q node --test misc/test_synsmell.mjs
+.PHONY: check-synsmell
+check: check-synsmell
+
 # == check-removals ==
 check-removals: misc/check-removals.sh misc/test_check_removals.py
 	$(QCHECK)

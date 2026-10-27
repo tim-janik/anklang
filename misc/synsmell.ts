@@ -53,6 +53,7 @@ function get_language (filename: string): SupportedLanguage
 
 const checks: Record<string, boolean> = {
   'ban-printf':                    true,   // C++ only
+  'ban-event-pumping':             true,
   'separate-body':                 true,
   'whitespace-before-parenthesis': true,
   'ban-fixme':                     true,
@@ -106,6 +107,25 @@ function check_ban_printf (node: Node, fn: string, lines: string[], lang: string
   if (func && /\b[a-z]?printf$/.test (func.text))
     emit (fn, node.startPosition.row + 1, node.startPosition.column,
          'warning', `invalid call to ${func.text}, use printout ()`, lines);
+}
+
+function check_ban_event_pumping (node: Node, fn: string, lines: string[], lang: string): void
+{
+  if (!checks['ban-event-pumping'] || lang !== 'cpp' || node.type !== 'call_expression') return;
+  const func = node.childForFieldName ('function');
+  if (!func) return;
+  const callee = func.text.replace (/\s+/g, '');
+  if (!/(?:^|::|->|\.)(?:iterate|iterate_pending|runDispatchLoop|runDispatchLoopUntil|dispatchNextMessageOnSystemQueue|g_main_context_iteration|g_main_loop_run)$/.test (callee) &&
+      !/\b(?:main_loop|loop\d*)(?:->|\.)run$/.test (callee)) return;
+  let owner = node.parent;
+  while (owner && owner.type !== 'function_definition' && owner.type !== 'lambda_expression') owner = owner.parent;
+  const name = owner?.childForFieldName ('declarator')?.childForFieldName ('declarator')?.text;
+  const filename = path.relative (process.cwd(), path.resolve (fn));
+  if (owner?.type === 'function_definition' &&
+      ((filename === 'ase/main.cc' && name === 'main' && /->(?:iterate_pending|run)$/.test (callee)) ||
+       (filename === 'ase/trkn.cc' && ['trkn_init', 'trkn_shutdown'].includes (name) && /->iterate_pending$/.test (callee)))) return;
+  emit (fn, node.startPosition.row + 1, node.startPosition.column,
+        'error', 'event pumping is forbidden; use a timer or co_await instead', lines);
 }
 
 // Unified newline-before-brace check for function bodies (C++ + JS/TS)
@@ -339,6 +359,7 @@ async function analyze_file (filename: string): Promise<void>
 
   for (const [node, in_error_zone] of walk (root, false)) {
     check_ban_printf (node, filename, lines, lang);
+    check_ban_event_pumping (node, filename, lines, lang);
     check_separate_body (node, filename, lines, lang);
     check_whitespace_before_paren (node, filename, lines, lang, in_error_zone);
     check_ban_fixme (node, filename, lines);
