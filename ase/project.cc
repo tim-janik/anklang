@@ -579,6 +579,7 @@ void
 ProjectImpl::project_dir_changed ()
 {
   return_unless (!!edit_);
+  edit_->sendSourceFileUpdate();
   for (const auto &track : all_tracks())
     for (const auto &clip : track->all_clips())
       clip->emit_notify ("original_file");
@@ -595,6 +596,7 @@ ProjectImpl::remove_project_dir ()
     return Error::NONE;
   if (!Path::check (Path::join (project_dir_, ".anklang.project"), "f"))
     return Error::BAD_PROJECT;
+  stop_playback();
   Path::rmrf (project_dir_);
   if (Path::check (project_dir_, "e"))
     return Error::FILE_WRITE_FAILED;

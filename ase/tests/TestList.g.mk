@@ -84,6 +84,7 @@ ASE_TEST_LIST := \
   storage_roundtrip \
   string_tests \
   test_audio_sample_load \
+  test_project_directory_audio \
   test_serializable_hierarchy \
   track_all_clips \
   track_control_classification \

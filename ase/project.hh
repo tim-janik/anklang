@@ -29,6 +29,7 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   friend class TrackImpl;
   friend class UndoScope;
   friend void test_audio_sample_load();
+  friend void test_project_directory_audio();
   UndoScope           add_undo_scope (const String &scopename);
 protected:
   explicit            ProjectImpl     (const juce::ValueTree &state, const String &dir, bool new_project);
