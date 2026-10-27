@@ -20,8 +20,17 @@
 
 #define JSONIPC_ISLIKELY(expr)          __builtin_expect (bool (expr), 1)
 #define JSONIPC_UNLIKELY(expr)          __builtin_expect (bool (expr), 0)
-#define JSONIPC_WARNING(fmt,...)        do { fprintf (stderr, "%s:%d: warning: ", __FILE__, __LINE__); fprintf (stderr, fmt, __VA_ARGS__); fputs ("\n", stderr); } while (0)
-#define JSONIPC_ASSERT_RETURN(expr,...) do { if (JSONIPC_ISLIKELY (expr)) break; fprintf (stderr, "%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #expr); abort(); } while (0)
+#define JSONIPC_WARNING(...) \
+  do { \
+    fputs ((::Jsonipc::string_format ("%s:%d: warning: ", __FILE__, __LINE__) + \
+            ::Jsonipc::string_format (__VA_ARGS__) + "\n").c_str(), stderr); \
+  } while (0)
+#define JSONIPC_ASSERT_RETURN(expr,...) \
+  do { \
+    if (JSONIPC_ISLIKELY (expr)) break; \
+    fputs (::Jsonipc::string_format ("%s:%d: assertion failed: %s\n", __FILE__, __LINE__, #expr).c_str(), stderr); \
+    abort(); \
+  } while (0)
 
 namespace Jsonipc {
 
@@ -671,7 +680,8 @@ public:
       {
         Wrapper *wrapper = pair.second;
         if (printdebug)
-          fprintf (stderr, "Jsonipc::~Wrapper: %s: $id=%zu\n", string_demangle_cxx (wrapper->typeid_key().tindex.name()).c_str(), pair.first);
+          fputs (string_format ("Jsonipc::~Wrapper: %s: $id=%zu\n",
+                                string_demangle_cxx (wrapper->typeid_key().tindex.name()).c_str(), pair.first).c_str(), stderr);
         delete wrapper;
       }
   }
@@ -999,7 +1009,7 @@ public:
   {
     const std::string full_js_name = normalize_typename (open_enum_) + "." + name;
     using underlying = typename std::underlying_type<T>::type;
-    b_ += "  " + name + ": \"" + full_js_name + "\", // " + std::to_string(static_cast<underlying>(v)) + "\n";
+    b_ += "  " + name + ": \"" + full_js_name + "\", // " + std::to_string (static_cast<underlying> (v)) + "\n";
   }
   void
   close_enum()

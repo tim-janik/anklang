@@ -21,8 +21,10 @@ ASE_TEST_LIST := \
   crawler_tests \
   delay_promise_test \
   event_list_tests \
+  formatter_diagnostics \
   is_compressed_tests \
   jsonapi_tests \
+  jsonipc_diagnostics \
   levenshtein_tests \
   loft_allocator_tests \
   loft_shuffle_thread_allocs \
@@ -70,6 +72,8 @@ ASE_TEST_LIST := \
   signalutils_tests \
   sndfile_tests \
   sortnet_tests \
+  spawn_failure_diagnostics \
+  stacktrace_diagnostics \
   storage_links \
   storage_long_link_error \
   storage_mimetype \
