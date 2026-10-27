@@ -358,8 +358,8 @@ public:
   virtual bool            can_redo       () = 0;       ///< Check if any redo steps have been recorded.
   virtual double          length         () const = 0; ///< End time of the last clip in seconds, changes on `notify:length`.
   virtual void            length         (double) = 0; ///< Read-only, assignments warn.
-  virtual String          match_serialized (const String &regex,
-                                            int group = 0) = 0; ///< Match `regex` against the serialized project state.
+  virtual String          grep_serialized (const String &regex,
+                                           int group = 0) = 0; ///< Match `regex` against the XML of the Tracktion Edit.
   static ProjectP         last_project   ();
 };
 

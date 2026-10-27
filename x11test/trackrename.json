@@ -152,7 +152,7 @@
         },
         {
             "type": "change",
-            "value": "(?s)\"tracks\":.*\"name\":\\s*\"(Master2)\"",
+            "value": "<TRACK\\b[^>]*\\bname=\"(Master2)\"",
             "selectors": [
                 [
                     "aria/[role=\"dialog\"]",

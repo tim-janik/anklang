@@ -310,7 +310,7 @@ jsonipc_for_api_jsonipc_json()
     .set ("redo", &::Ase::Project::redo)
     .set ("can_redo", &::Ase::Project::can_redo)
     .set ("length", &::Ase::Project::length, &::Ase::Project::length)
-    .set ("match_serialized", &::Ase::Project::match_serialized)
+    .set ("grep_serialized", &::Ase::Project::grep_serialized)
     ;
 
   ::Jsonipc::Class< ::Ase::ResourceCrawler > class__Ase_ResourceCrawler;

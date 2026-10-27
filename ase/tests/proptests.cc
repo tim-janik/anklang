@@ -392,7 +392,7 @@ static const std::map<String,String> exempt_methods = {
   { "Project.can_undo",            "Undo history query, exercised by the loop." },
   { "Project.redo",                "Undo history control, exercised by the loop." },
   { "Project.can_redo",            "Undo history query, exercised by the loop." },
-  { "Project.match_serialized",    "Serialized state query." },
+  { "Project.grep_serialized",     "Serialized state query." },
 };
 
 template<class T, class Base> static void

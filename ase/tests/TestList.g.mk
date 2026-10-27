@@ -48,6 +48,7 @@ ASE_TEST_LIST := \
   project_dir_lifetime \
   project_dir_names \
   project_dir_roots \
+  project_grep_serialized \
   project_length \
   project_name_notifications \
   project_playback_state \

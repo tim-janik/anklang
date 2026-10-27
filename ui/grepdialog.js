@@ -37,7 +37,7 @@ async function devgreps_pattern_change()
   const pattern = pinput.value;
   resultelement.innerText = '\n';
   if (pattern && App?.project) {
-    let r = App.project.match_serialized (pattern, -1);
+    let r = App.project.grep_serialized (pattern, -1);
     r = await r;
     resultelement.innerText = r;
   }

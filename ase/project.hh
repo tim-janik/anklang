@@ -37,8 +37,7 @@ protected:
   explicit            ProjectImpl     ();
   virtual            ~ProjectImpl     ();
   void                foreach_track   (const std::function<bool(Track&,int)> &cb) const;
-  Error               snapshot_project (String &json);
-  String              match_serialized (const String &regex, int group) override;
+  String              grep_serialized (const String &regex, int group) override;
   void                deactivate_edit ();
 public:
   void                 bpm              (double bpm) override;
