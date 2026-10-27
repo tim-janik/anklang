@@ -5,6 +5,9 @@
 #include <atomic>
 #include <cstring>
 #include <cerrno>
+#include <charconv>
+#include <limits>
+#include <string_view>
 #include <sys/wait.h>
 #include <sys/prctl.h>
 #include <sys/stat.h>
@@ -259,45 +262,70 @@ spawn_process (const std::vector<std::string> &argv, pid_t *child_pid, int pdeat
       if (!keep)
         close (i);
     }
-  ErrorReason ereason;
+  const char *failed_operation = "execvp";
   const char *const home = getenv ("HOME");
   if (false && home && chdir (home) < 0) {
-    ereason = { errno, "chdir" };
+    failed_operation = "chdir";
     goto exec_error;
   }
   // Redirect stdout/stderr to stdio_fd if provided
   if (stdio_fd >= 0) {
     if (dup2 (stdio_fd, STDOUT_FILENO) < 0) {
-      ereason = { errno, "dup2 stdout" };
+      failed_operation = "dup2 stdout";
       goto exec_error;
     }
     if (dup2 (stdio_fd, STDERR_FILENO) < 0) {
-      ereason = { errno, "dup2 stderr" };
+      failed_operation = "dup2 stderr";
       goto exec_error;
     }
     close (stdio_fd);
   }
   if (unsetenv ("GTK_MODULES") < 0) {
-    ereason = { errno, "unsetenv" };
+    failed_operation = "unsetenv";
     goto exec_error;
   }
   sigset_t empty_mask;
   sigemptyset (&empty_mask);
   if (sigprocmask (SIG_SETMASK, &empty_mask, nullptr) < 0) {
-    ereason = { errno, "sigprocmask" };
+    failed_operation = "sigprocmask";
     goto exec_error;
   }
   // Kill the child when the parent dies (though Chromium resets this)
   if (pdeathsig > 0 && prctl (PR_SET_PDEATHSIG, SIGKILL) < 0) {
-    ereason = { errno, "prctl(PR_SET_PDEATHSIG)" };
+    failed_operation = "prctl(PR_SET_PDEATHSIG)";
     goto exec_error;
   }
   execvp (child_argv[0], const_cast<char *const *> (child_argv));
-  // exec failed
-  ereason = { errno, "execvp" };
  exec_error:
-  fprintf (stderr, "%s[pid=%d]: fork to exec %s: %s: %s\n", program_invocation_short_name, pid,
-           child_argv[0], ereason.what.c_str(), strerror (ereason.error));
+  {
+    const int error = errno;
+    char pid_text[std::numeric_limits<pid_t>::digits10 + 2];
+    char error_text[std::numeric_limits<int>::digits10 + 2];
+    const char *pid_end = std::to_chars (pid_text, pid_text + sizeof (pid_text), pid).ptr;
+    const char *error_end = std::to_chars (error_text, error_text + sizeof (error_text), error).ptr;
+    auto write_text = [] (std::string_view text) {
+      while (!text.empty())
+        {
+          const ssize_t count = write (STDERR_FILENO, text.data(), text.size());
+          if (count > 0)
+            text.remove_prefix (count);
+          else if (count < 0 && errno == EINTR)
+            continue;
+          else
+            break;
+        }
+    };
+    write_text (program_invocation_short_name);
+    write_text ("[pid=");
+    write_text ({ pid_text, size_t (pid_end - pid_text) });
+    write_text ("]: fork to exec ");
+    write_text (child_argv[0]);
+    write_text (": ");
+    write_text (failed_operation);
+    write_text (": errno=");
+    write_text ({ error_text, size_t (error_end - error_text) });
+    write_text ("\n");
+  }
   _exit (127); // avoid atexit handlers that might destroy parent resources (e.g. xlib DISPLAY fd)
 }
 

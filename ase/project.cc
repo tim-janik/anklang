@@ -308,7 +308,7 @@ test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
       liquidsfz->load (filename);
 
   auto &transport = edit->getTransport();
-  transport.setLoopRange({ tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (duration) });
+  transport.setLoopRange ({ tracktion::TimePosition::fromSeconds (start), tracktion::TimeDuration::fromSeconds (duration) });
   transport.looping = true;
   transport.setPosition (tracktion::TimePosition::fromSeconds (start));
 }
