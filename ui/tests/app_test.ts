@@ -300,13 +300,23 @@ async function test_quit_project (): Promise<boolean>
       { unnamed: true, choice: 0, error: Ase.Error.FILE_WRITE_FAILED },
       { unnamed: true, choice: 1, error: Ase.Error.NONE },
       { unnamed: true, choice: 2, error: Ase.Error.NONE },
+      { unnamed: true, choice: 2, error: Ase.Error.FILE_WRITE_FAILED },
     ]) {
       const project = await Ase.server.create_project ('Quit test');
       projects.push (project);
-      let closes = 0, removals = 0, saves = 0, prompted = false, notice = '', resolve_removal;
+      let closes = 0, removals = 0, saves = 0, prompted = false, notice = '', error_dialogs = 0, resolve_removal;
       const restore = [
         stub (app, 'close_window', () => { closes++; }),
-        stub (app, 'async_button_dialog', async () => { prompted = true; return scenario.choice; }),
+        stub (app, 'async_button_dialog', async (title, text, buttons) => {
+          if (buttons.length === 1) {
+            error_dialogs++;
+            if (!text.includes ('Failed to save project:') || buttons[0] !== 'Close')
+              throw new Error ('The save error dialog needs an error message and a Close button');
+            return 0;
+          }
+          prompted = true;
+          return scenario.choice;
+        }),
         stub (shell, 'show_notice', message => { notice = message; }),
         stub (shell, 'async_modal_dialog', async setup => {
           const div = document.createElement ('div');
@@ -325,7 +335,7 @@ async function test_quit_project (): Promise<boolean>
           }
           if (method === 'save_project') {
             saves++;
-            return Promise.resolve (Ase.Error.NONE);
+            return Promise.resolve (scenario.error);
           }
         }
         return send.call (this, method, params);
@@ -347,12 +357,15 @@ async function test_quit_project (): Promise<boolean>
           resolve_removal (scenario.error);
         }
         if (scenario.choice !== 1)
-          for (let frame = 0; frame < 120 && !closes && !notice; frame++)
+          for (let frame = 0; frame < 120 && !closes && !notice && !error_dialogs; frame++)
             await Dom.ui_next_frame();
         await Dom.ui_next_frame();
-        const closing = scenario.choice === 0 || scenario.choice === 2;
+        const save_failed = scenario.choice === 2 && scenario.error !== Ase.Error.NONE;
+        const closing = scenario.choice === 0 || (scenario.choice === 2 && !save_failed);
         if (removals !== Number (removing) || closes !== Number (closing) || saves !== Number (scenario.choice === 2))
           throw new Error ('Quit removed, saved or closed the wrong project');
+        if (error_dialogs !== Number (save_failed))
+          throw new Error ('Quit must show an error dialog only when saving fails');
       } finally {
         if (resolve_removal) {
           resolve_removal (Ase.Error.NONE);

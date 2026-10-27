@@ -252,7 +252,7 @@ async function save_project (project)
       name = input.value.trim();
     }
   const err = await App.save_project (name, project);
-  return show_save_result (project, err, name);
+  return show_save_result (project, err, '');
 }
 
 async function save_project_as (project)
@@ -276,16 +276,13 @@ let save_project_last_dir = "~MUSIC";
 async function show_save_result (project, err, target)
 {
   const dir = await project.$refetch (() => project.project_dir);
-  let msg;
-  if (err === Ase.Error.NONE) {
-    msg = '### Project Saved\n  \n  \n';
-    msg += 'Project successfully saved to:\n\n`' + displayfs (dir) + '`\n';
-  } else {
+  if (err !== Ase.Error.NONE) {
     const errblurb = await Ase.server.error_blurb (err);
-    msg = '# File IO Error\n  \n  \n';
-    msg += 'Failed to save project:\n\n';
-    msg += '`' + displayfs (dir || target) + ': ' + errblurb + '`';
+    await App.async_button_dialog (_('Save Failed'),
+                                   _('Failed to save project:') + '\n\n' + displayfs (target || dir) + '\n' + errblurb,
+                                   [ _('Close') ], 'ERROR');
+    return false;
   }
-  Shell.show_notice (msg);
-  return err === Ase.Error.NONE;
+  Shell.show_notice ('### Project Saved\n\nProject successfully saved to:\n\n`' + displayfs (dir) + '`\n');
+  return true;
 }
