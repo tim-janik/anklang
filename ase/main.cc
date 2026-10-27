@@ -597,10 +597,9 @@ main (int argc, char *argv[])
   ProjectImplP preload_project;
   for (const auto &filename : App.args)
     {
-      preload_project = ProjectImpl::create (Path::basename (filename));
-      Error error = Error::NO_MEMORY;
-      if (preload_project)
-        error = preload_project->load_project (filename);
+      const Error error = Server::instance().open_project (filename);
+      if (!error)
+        preload_project = std::dynamic_pointer_cast<ProjectImpl> (Server::instance().last_project());
       diag ("Main: load project: %s: %s", filename, ase_error_blurb (error));
       if (!!error)
         warning ("%s: failed to load project: %s", filename, ase_error_blurb (error));

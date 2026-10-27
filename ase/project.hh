@@ -24,9 +24,6 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   std::unique_ptr<tracktion::Edit> edit_;
   std::unique_ptr<TransportListener> transport_listener_;
   ASE_DEFINE_MAKE_SHARED (ProjectImpl);
-  struct PStorage;
-  PStorage *storage_ = nullptr;
-  String saved_filename_;
   String project_dir_;
   bool discarded_ = false;
   friend class TrackImpl;
@@ -34,11 +31,13 @@ class ProjectImpl final : public DeviceImpl, public virtual Project {
   friend void test_audio_sample_load();
   UndoScope           add_undo_scope (const String &scopename);
 protected:
-  explicit            ProjectImpl     ();
+  explicit            ProjectImpl     (const juce::ValueTree &state, const String &dir, bool new_project);
   virtual            ~ProjectImpl     ();
   void                foreach_track   (const std::function<bool(Track&,int)> &cb) const;
   String              grep_serialized (const String &regex, int group) override;
   void                deactivate_edit ();
+  String              create_project_dir (const String &basename);
+  void                project_dir_changed ();
 public:
   void                 bpm              (double bpm) override;
   double               bpm              () const override;
@@ -72,14 +71,20 @@ public:
   TrackS               all_tracks        () const override;
   void                 all_tracks        (const TrackS &) override;
   TrackP               master_track      () override;
-  Error                load_project      (const String &utf8filename) override;
-  Error                save_project      (const String &utf8filename, bool collect) override;
-  String               saved_filename    () override; // returns utf8filename
+  Error                save_project      (const String &utf8name) override;
+  Error                save_project_as   (const String &utf8path) override;
+  String               project_dir       () const override;
+  void                 project_dir       (const String&) override;
+  bool                 unnamed           () const override;
+  void                 unnamed           (bool) override;
+  Error                remove_project_dir () override;
   String               project_dir       (bool create);
   String               link_sample       (const String &file, bool &created);
   TelemetryFieldS      telemetry         () const override;
   static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);
+  static ProjectImplP  from_xml          (const String &xml, const String &dir = "");
+  static Error         open_project      (const String &utf8path);
 };
 using ProjectImplP = std::shared_ptr<ProjectImpl>;
 

@@ -4,6 +4,8 @@
 #include <ase/cxxaux.hh>
 #include <ase/../trkn/tracktion_decls.hh>
 
+namespace juce { class ValueTree; }
+
 // Internal Trkn API
 namespace Ase {
 

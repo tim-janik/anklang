@@ -29,6 +29,7 @@ public:
   bool         user_reply           (uint64 noteid, uint r) override;
   bool         broadcast_telemetry  (const TelemetrySegmentS &plan, int32 interval_ms) override;
   void         shutdown             () override;
+  Error        open_project         (const String &utf8path) override;
   ProjectP     last_project         () override;
   ProjectP     create_project       (String projectname) override;
   PropertyP    access_preference    (const String &ident) override;

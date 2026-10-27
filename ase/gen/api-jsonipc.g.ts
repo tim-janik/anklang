@@ -390,7 +390,6 @@ export const Error = { // Ase::Error
   CODEC_FAILURE: "Ase.Error.CODEC_FAILURE", // 805314569
   BROKEN_ARCHIVE: "Ase.Error.BROKEN_ARCHIVE", // 805314570
   BAD_PROJECT: "Ase.Error.BAD_PROJECT", // 805314571
-  NO_PROJECT_DIR: "Ase.Error.NO_PROJECT_DIR", // 805314572
   DEVICE_NOT_AVAILABLE: "Ase.Error.DEVICE_NOT_AVAILABLE", // 805318656
   DEVICE_ASYNC: "Ase.Error.DEVICE_ASYNC", // 805318657
   DEVICE_BUSY: "Ase.Error.DEVICE_BUSY", // 805318658
@@ -919,12 +918,20 @@ export class Project // Ase::Project
   { this.$set ("all_tracks", v); }
   master_track (): Promise<Track>
   { return this.$rpc ("master_track", [this]); }
-  save_project (arg1: string, arg2: boolean): Promise<Error>
-  { return this.$rpc ("save_project", [this, arg1, arg2]); }
-  saved_filename (): Promise<string>
-  { return this.$rpc ("saved_filename", [this]); }
-  load_project (arg1: string): Promise<Error>
-  { return this.$rpc ("load_project", [this, arg1]); }
+  save_project (arg1: string): Promise<Error>
+  { return this.$rpc ("save_project", [this, arg1]); }
+  save_project_as (arg1: string): Promise<Error>
+  { return this.$rpc ("save_project_as", [this, arg1]); }
+  get project_dir (): string
+  { return this.$get ("project_dir", '') as string; }
+  set project_dir (v: string)
+  { this.$set ("project_dir", v); }
+  get unnamed (): boolean
+  { return this.$get ("unnamed", false) as boolean; }
+  set unnamed (v: boolean)
+  { this.$set ("unnamed", v); }
+  remove_project_dir (): Promise<Error>
+  { return this.$rpc ("remove_project_dir", [this]); }
   telemetry (): Promise<TelemetryField[]>
   { return this.$rpc ("telemetry", [this]); }
   group_undo (arg1: string): Promise<void>
@@ -1015,6 +1022,8 @@ export class Server // Ase::Server
   { return this.$rpc ("engine_stats", [this]); }
   exit_program (arg1: number): Promise<void>
   { return this.$rpc ("exit_program", [this, arg1]); }
+  open_project (arg1: string): Promise<Error>
+  { return this.$rpc ("open_project", [this, arg1]); }
   last_project (): Promise<Project>
   { return this.$rpc ("last_project", [this]); }
   create_project (arg1: string): Promise<Project>

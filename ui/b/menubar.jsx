@@ -187,7 +187,8 @@ async function activate (project, uri, event)
       await project.redo();
       break;
     case 'loadnew':
-      App.load_project_checked();
+      if (await App.load_project_checked() === Ase.Error.NONE && Shell.project !== project)
+        await project.discard();
       break;
     case 'load':
       open_file();
@@ -196,7 +197,7 @@ async function activate (project, uri, event)
       save_project (project);
       break;
     case 'saveas':
-      save_project (project, true);
+      save_project_as (project);
       break;
   }
 }
@@ -223,51 +224,68 @@ async function open_file() {
   if (!filename)
     return;
   open_file_last_dir = dirname (filename);
+  const project = Shell.project;
   const err = await App.load_project_checked (filename);
-  if (err != Ase.Error.NONE) {
-    // load_project_checked() displays a dialog
-  }
+  if (err === Ase.Error.NONE && Shell.project !== project)
+    await project.discard();
 }
 let open_file_last_dir = "~MUSIC";
 
-async function save_project (project, asnew = false) {
-  const opt = {
-    title:  _('Save Project'),
-    button: _('Save As'),
-    cwd:    save_project_last_dir || "~MUSIC",
-    existing: false,
-    filters: [ { name: 'Projects', extensions: ['anklang'] }, ],
-  };
-  let filename = await project.saved_filename();
-  let replace = asnew ? 0 : !!filename;
-  if (asnew || !filename)
-    filename = await Shell.select_file (opt);
-  if (!filename)
-    return false;
-  save_project_last_dir = dirname (filename);
-  if (0 && !replace) // TODO: if file_exists (filename)
+async function save_project (project)
+{
+  let name = '';
+  if (await project.$refetch (() => project.unnamed))
     {
-      replace = await App.async_button_dialog ("Replace Project?",
-                                               "Replace existing project file?\n" +
-                                               displayfs (filename) + ": File exists", [
-                                                 'Cancel',
-                                                 { label: 'Replace', autofocus: true }, ],
-                                               'QUESTION');
-      if (replace != 1)
+      const input = document.createElement ('input');
+      input.type = 'text';
+      input.autofocus = true;
+      input.setAttribute ('aria-label', _('Project name'));
+      input.value = project.name === 'Untitled' ? '' : project.name;
+      const result = await Shell.async_modal_dialog ({
+        title: _('Name Project'),
+        text: _('Project name'),
+        buttons: [ _('Cancel'), _('Save') ],
+        div_handler: div => div.appendChild (input),
+      });
+      if (result !== 1 || !input.value.trim())
         return false;
+      name = input.value.trim();
     }
-  let msg, err = await App.save_project (filename, true, project);
+  const err = await App.save_project (name, project);
+  return show_save_result (project, err, name);
+}
+
+async function save_project_as (project)
+{
+  const path = await Shell.select_file ({
+    title:  _('Save Project As'),
+    button: _('Save As'),
+    cwd:    save_project_last_dir,
+    existing: false,
+  });
+  if (!path)
+    return false;
+  save_project_last_dir = dirname (path);
+  Shell.show_spinner();
+  const err = await project.save_project_as (path);
+  Shell.hide_spinner();
+  return show_save_result (project, err, path);
+}
+let save_project_last_dir = "~MUSIC";
+
+async function show_save_result (project, err, target)
+{
+  const dir = await project.$refetch (() => project.project_dir);
+  let msg;
   if (err === Ase.Error.NONE) {
-    filename = await project.saved_filename(); // get canonicalized form
     msg = '### Project Saved\n  \n  \n';
-    msg += 'Project successfully saved to:\n\n`' + displayfs (filename) + '`\n';
+    msg += 'Project successfully saved to:\n\n`' + displayfs (dir) + '`\n';
   } else {
-    let errblurb = Ase.server.error_blurb (err);
+    const errblurb = await Ase.server.error_blurb (err);
     msg = '# File IO Error\n  \n  \n';
     msg += 'Failed to save project:\n\n';
-    msg += '`' + displayfs (filename) + ": " + await errblurb + '`';
+    msg += '`' + displayfs (dir || target) + ': ' + errblurb + '`';
   }
   Shell.show_notice (msg);
   return err === Ase.Error.NONE;
 }
-let save_project_last_dir = "~MUSIC";

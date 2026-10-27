@@ -77,6 +77,7 @@ StringS      searchpath_split    (const String &searchpath);
 String       searchpath_join     (const StringS &string_vector);
 template<class ...S>
 String       searchpath_join     (String path, const S &...more);
+String       glob_escape         (const String &path);
 void         glob                (const String &pathpattern, StringS &matches);
 void         glob                (const String &pathpattern, StringS &dirs, StringS &files);
 void         rglob               (const String &basedir, const String &pattern, StringS &matches);

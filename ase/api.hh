@@ -56,7 +56,6 @@ enum class Error : int32_t {
   CODEC_FAILURE,
   BROKEN_ARCHIVE,
   BAD_PROJECT,
-  NO_PROJECT_DIR,
   // Device errors
   DEVICE_NOT_AVAILABLE          = 0x30003000,
   DEVICE_ASYNC,
@@ -346,9 +345,13 @@ public:
   virtual TrackS          all_tracks     () const = 0; ///< List all tracks, changes on `notify:all_tracks`.
   virtual void            all_tracks     (const TrackS &) = 0; ///< Read-only, assignments warn.
   virtual TrackP          master_track   () = 0;       ///< Retrieve the master track.
-  virtual Error           save_project   (const String &utf8filename, bool collect) = 0; ///< Store Project and collect external files.
-  virtual String          saved_filename () = 0;       ///< Retrieve UTF-8 filename for save or from load.
-  virtual Error           load_project   (const String &utf8filename) = 0; ///< Load project from file `filename`.
+  virtual Error           save_project   (const String &utf8name) = 0; ///< Save into the project dir, naming an unnamed project.
+  virtual Error           save_project_as (const String &utf8path) = 0; ///< Continue in the new dir `utf8path`, copied or, if unnamed, moved there.
+  virtual String          project_dir    () const = 0; ///< Persistent project dir, empty until the first write.
+  virtual void            project_dir    (const String&) = 0; ///< Read-only, assignments warn.
+  virtual bool            unnamed        () const = 0; ///< Whether saving requires a project name.
+  virtual void            unnamed        (bool) = 0;   ///< Read-only, assignments warn.
+  virtual Error           remove_project_dir () = 0;   ///< Explicitly remove the project's persistent files.
   virtual TelemetryFieldS telemetry      () const = 0; ///< Retrieve project telemetry locations.
   virtual void            group_undo     (const String &undoname) = 0; ///< Merge upcoming undo steps.
   virtual void            ungroup_undo   () = 0;                       ///< Stop merging undo steps.
@@ -443,6 +446,7 @@ public:
   String            engine_stats      ();                        ///< Print engine state.
   void              exit_program      (int status = 0);          ///< End program (without saving).
   // projects
+  virtual Error    open_project   (const String &utf8path) = 0; ///< Open a project dir as last_project().
   virtual ProjectP last_project   () = 0;       ///< Retrieve the last created project.
   virtual ProjectP create_project (String projectname) = 0; ///< Create a new project (name is modified to be unique if necessary.
   // Browsing
