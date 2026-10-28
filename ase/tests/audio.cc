@@ -34,7 +34,10 @@ public:
   ~AudioTestDevice()
   {
     manager_.deviceManager.closeAudioDevice();
+    manager_.closeDevices();
+    manager_.removeHostedAudioDeviceInterface();
     manager_.rescanWaveDeviceList();
+    TASSERT (!manager_.isHostedAudioDeviceInterfaceInUse());
   }
   static void
   write_signal (const String &file)
@@ -98,6 +101,8 @@ project_directory_audio_playback()
 
   playing.disconnect();
   project->stop_playback();
+  const String dir = project->project_dir();
+  TASSERT (!project->remove_project_dir() && !Path::check (dir, "e"));
   project->discard();
   anklang_cachedir_cleanup (root);
 }
