@@ -54,6 +54,7 @@ function get_language (filename: string): SupportedLanguage
 const checks: Record<string, boolean> = {
   'ban-printf':                    true,   // C++ only
   'ban-event-pumping':             true,
+  'test-api-only':                 true,
   'separate-body':                 true,
   'whitespace-before-parenthesis': true,
   'ban-fixme':                     true,
@@ -126,6 +127,46 @@ function check_ban_event_pumping (node: Node, fn: string, lines: string[], lang:
        (filename === 'ase/trkn.cc' && ['trkn_init', 'trkn_shutdown'].includes (name) && /->iterate_pending$/.test (callee)))) return;
   emit (fn, node.startPosition.row + 1, node.startPosition.column,
         'error', 'event pumping is forbidden; use a timer or co_await instead', lines);
+}
+
+// Temporary audio exceptions until Ase exposes audio I/O, rendering and recording.
+const test_audio_exceptions: Record<string, { includes: string[], scopes: string[] }> = {
+  'ase/tests/audio.cc': {
+    includes: ['trkn/tracktion.hh', 'ase/trkn.hh'],
+    scopes: ['AudioTestDevice'],
+  },
+  'ase/tests/test-setup.cc': {
+    includes: ['trkn/tracktion.hh'],
+    scopes: ['load_audio_file_as_clip', 'loop_around_clip', 'test_audio_sample_load', 'test_project_directory_audio'],
+  },
+};
+
+function check_test_api_only (node: Node, fn: string, lines: string[], lang: string): void
+{
+  if (!checks['test-api-only'] || lang !== 'cpp') return;
+  const filename = path.relative (process.cwd(), path.resolve (fn));
+  if (!filename.startsWith ('ase/tests/') || filename.includes ('.g.')) return;
+  const exception = test_audio_exceptions[filename];
+  if (node.type === 'preproc_include') {
+    const included = node.childForFieldName ('path')?.text.slice (1, -1);
+    if (!included) return;
+    const header = path.normalize (included.startsWith ('.') ? path.join (path.dirname (filename), included) : included);
+    if (!/(?:^|\/)(?:trkn|juce|tracktion)(?:[./_-]|$)/.test (header) ||
+        exception?.includes.includes (header)) return;
+  } else {
+    if (!['identifier', 'namespace_identifier', 'type_identifier', 'field_identifier'].includes (node.type) ||
+        !/^(?:tracktion|juce|trkn_\w+|edit_)$/.test (node.text)) return;
+    for (let owner = node.parent; owner; owner = owner.parent) {
+      let name = owner.childForFieldName ('name');
+      if (owner.type === 'function_definition') {
+        name = owner.childForFieldName ('declarator');
+        while (name?.childForFieldName ('declarator')) name = name.childForFieldName ('declarator');
+      } else if (owner.type !== 'class_specifier' && owner.type !== 'struct_specifier') continue;
+      if (name && exception?.scopes.includes (name.text)) return;
+    }
+  }
+  emit (fn, node.startPosition.row + 1, node.startPosition.column,
+        'error', 'tests must use Ase APIs instead of Tracktion/JUCE directly', lines);
 }
 
 // Unified newline-before-brace check for function bodies (C++ + JS/TS)
@@ -360,6 +401,7 @@ async function analyze_file (filename: string): Promise<void>
   for (const [node, in_error_zone] of walk (root, false)) {
     check_ban_printf (node, filename, lines, lang);
     check_ban_event_pumping (node, filename, lines, lang);
+    check_test_api_only (node, filename, lines, lang);
     check_separate_body (node, filename, lines, lang);
     check_whitespace_before_paren (node, filename, lines, lang, in_error_zone);
     check_ban_fixme (node, filename, lines);

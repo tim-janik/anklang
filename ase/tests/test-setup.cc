@@ -10,6 +10,7 @@
 
 namespace Ase {
 
+// Temporary API-only exception for sample playback setup; switch to Ase APIs in a future change.
 static tracktion::WaveAudioClip::Ptr
 load_audio_file_as_clip (tracktion::Edit &edit, const juce::File &file)
 {
