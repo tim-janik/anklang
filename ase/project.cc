@@ -59,6 +59,7 @@ class ProjectImpl::TransportListener : juce::ChangeListener, tracktion::Transpor
   LoopID ppt = LoopID::INVALID;
   FastMemory::Block transport_block_;
   std::list<std::function<void()>> stopped_callbacks_;
+  Preference::DelCb preference_listener_;
   te::Edit *edit_ = nullptr;
 public:
   struct Position {
@@ -80,10 +81,16 @@ public:
     transport.addListener (this);       // for TransportControl::Listener
     if (edit_)
       edit_->state.addListener (this);
+    preference_listener_ = Preference::listen ([this] (const CStringS &idents) {
+      if (std::count (idents.begin(), idents.end(), "anklang-sample-dirs"))
+        project_.asset_paths_changed();
+    });
   }
   ~TransportListener() override
   {
     assert_return (this_thread_is_ase());
+    if (preference_listener_)
+      preference_listener_();
     if (edit_)
       edit_->state.removeListener (this);
     transport.removeListener (this);
@@ -584,12 +591,19 @@ void
 ProjectImpl::project_dir_changed ()
 {
   return_unless (!!edit_);
+  asset_paths_changed();
+  emit_notify ("project_dir");
+  emit_notify ("unnamed");
+}
+
+void
+ProjectImpl::asset_paths_changed ()
+{
+  return_unless (!!edit_);
   edit_->sendSourceFileUpdate();
   for (const auto &track : all_tracks())
     for (const auto &clip : track->all_clips())
       clip->emit_notify ("original_file");
-  emit_notify ("project_dir");
-  emit_notify ("unnamed");
   emit_notify ("unresolved_assets");
 }
 

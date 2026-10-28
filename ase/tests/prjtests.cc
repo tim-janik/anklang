@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include <ase/project.hh>
+#include <ase/main.hh>
 #include <ase/clip.hh>
 #include <ase/track.hh>
 #include <ase/path.hh>
@@ -1117,6 +1118,71 @@ project_asset_libraries()
   anklang_cachedir_cleanup (root);
 }
 TEST_ADD (project_asset_libraries);
+
+static CoTaskVoid
+project_asset_preferences()
+{
+  const String root = anklang_cachedir_create(), first = Path::join (root, "first"), second = Path::join (root, "second");
+  TestEnvironment samples ("ANKLANG_SAMPLE_DIRS", ""), sfz ("SFZ_PATH", ""), sf2 ("SF2_PATH", "");
+  auto preference = Server::instance().access_preference ("anklang-sample-dirs");
+  TASSERT (preference);
+  const Value previous = preference->value();
+  Emittable::Connection preference_connection;
+  auto change_preference = [&] (PropertyP property, const Value &value) {
+    auto changed = main_loop->make_promise ([&] (std::function<void()> resolve) {
+      preference_connection = property->on_event ("notify:" + property->ident(), [resolve] (const Event&) { resolve(); });
+    });
+    property->value (value);
+    return changed;
+  };
+  co_await change_preference (preference, "");
+  const String reference = "pref-library.ogg";
+  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  for (const String &dir : StringS { first, second })
+    TASSERT (Path::mkdirs (dir) && Path::copy_file (sample, Path::join (dir, reference)));
+  auto project = project_with_assets ({ reference }), other = project_with_assets ({ reference });
+  auto clip = asset_clips (project)[0], other_clip = asset_clips (other)[0];
+  TASSERT (project->unresolved_assets() == StringS { reference });
+  TASSERT (other->unresolved_assets() == StringS { reference });
+  uint notifications = 0, other_notifications = 0, originals = 0;
+  auto connection = project->on_event ("notify:unresolved_assets", [&] (const Event&) { notifications++; });
+  auto other_connection = other->on_event ("notify:unresolved_assets", [&] (const Event&) { other_notifications++; });
+  auto clip_connection = clip->on_event ("notify:original_file", [&] (const Event&) { originals++; });
+  co_await change_preference (preference, first);
+  TASSERT (project->unresolved_assets().empty() && other->unresolved_assets().empty());
+  TASSERT (notifications > 0 && other_notifications > 0 && originals > 0);
+  TASSERT (clip->original_file() == Path::join (first, reference));
+  TASSERT (other_clip->original_file() == Path::join (first, reference));
+  const uint before_switch = notifications, original_before_switch = originals;
+  co_await change_preference (preference, second);
+  TASSERT (notifications > before_switch && originals > original_before_switch);
+  TASSERT (clip->original_file() == Path::join (second, reference));
+  TASSERT (other_clip->original_file() == Path::join (second, reference));
+  const uint before_unrelated = notifications;
+  auto unrelated = Server::instance().access_preference ("anklang-projects-dir");
+  TASSERT (unrelated);
+  co_await change_preference (unrelated, unrelated->value());
+  TASSERT (notifications == before_unrelated);
+  co_await change_preference (preference, "");
+  TASSERT (notifications > before_unrelated);
+  TASSERT (project->unresolved_assets() == StringS { reference });
+  TASSERT (other->unresolved_assets() == StringS { reference });
+  TASSERT (clip->original_file().empty() && other_clip->original_file().empty());
+  std::weak_ptr<Project> weak = project;
+  project->discard();
+  project.reset();
+  TASSERT (weak.expired());
+  const uint after_destroy = notifications, other_before_change = other_notifications;
+  co_await change_preference (preference, first);
+  TASSERT (notifications == after_destroy && other_notifications > other_before_change);
+  TASSERT (other->unresolved_assets().empty());
+  other->discard();
+  other.reset();
+  co_await change_preference (preference, previous);
+  preference_connection.disconnect();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_asset_preferences);
 
 static void
 project_asset_reappears()

@@ -40,6 +40,7 @@ protected:
   void                deactivate_edit ();
   String              create_project_dir (const String &basename);
   void                project_dir_changed ();
+  void                asset_paths_changed ();
 public:
   void                 bpm              (double bpm) override;
   double               bpm              () const override;

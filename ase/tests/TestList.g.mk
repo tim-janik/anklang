@@ -43,6 +43,7 @@ ASE_TEST_LIST := \
   plugin_creation \
   plugin_name \
   project_asset_libraries \
+  project_asset_preferences \
   project_asset_reappears \
   project_asset_references \
   project_creation \
