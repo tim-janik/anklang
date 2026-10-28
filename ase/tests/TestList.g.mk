@@ -61,6 +61,7 @@ ASE_TEST_LIST := \
   project_open_errors \
   project_playback_state \
   project_replace_asset \
+  project_replace_asset_invalid_file \
   project_save_as \
   project_save_backups \
   project_save_close_errors \

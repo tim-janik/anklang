@@ -220,6 +220,16 @@ ProjectImpl::replace_asset (const String &reference, const String &utf8filename)
   bool created = false;
   const String replacement = admit_asset (file, created);
   return_unless (!replacement.empty(), Error::FILE_WRITE_FAILED);
+  const String resolved = resolve_asset (replacement);
+  te::AudioFile audiofile (edit_->engine, juce::File (resolved));
+  if (created)
+    edit_->engine.getAudioFileManager().forceFileUpdate (audiofile);
+  if (!audiofile.isValid())
+    {
+      if (created)
+        unlink (resolved.c_str());
+      return Error::FORMAT_INVALID;
+    }
   for (auto clip : clips)
     clip->getSourceFileReference().source = juce::String (replacement);
   return Error::NONE;

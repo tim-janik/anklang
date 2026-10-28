@@ -1190,6 +1190,36 @@ project_replace_asset()
 TEST_ADD (project_replace_asset);
 
 static void
+project_replace_asset_invalid_file()
+{
+  const String root = anklang_cachedir_create(), dir = Path::join (root, "project");
+  TASSERT (Path::mkdirs (dir));
+  auto project = project_with_assets ({ "missing.ogg", "missing.ogg" }, dir);
+  const auto clips = asset_clips (project);
+  const String invalid = Path::join (root, "invalid.ogg"), link = Path::join (dir, "samples/invalid.ogg");
+  TASSERT (Path::stringwrite (invalid, "not audio"));
+  TASSERT (project->replace_asset ("missing.ogg", invalid) == Error::FORMAT_INVALID);
+  TASSERT (!Path::check (link, "L") && !Path::check (link, "e"));
+  TASSERT (!project->can_undo());
+  TASSERT (clips[0]->original_file().empty() && clips[1]->original_file().empty());
+  TASSERT (project->unresolved_assets() == StringS { "missing.ogg" });
+  TASSERT (project->grep_serialized ("source=\"missing.ogg\"") == "source=\"missing.ogg\"");
+  TASSERT (symlink (invalid.c_str(), link.c_str()) == 0);
+  TASSERT (project->replace_asset ("missing.ogg", invalid) == Error::FORMAT_INVALID);
+  TASSERT (Path::check (link, "L") && !project->can_undo());
+  TASSERT (project->unresolved_assets() == StringS { "missing.ogg" });
+  const String native = Path::join (root, "piano\x80.ogg");
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), native));
+  TASSERT (!project->replace_asset ("missing.ogg", encodefs (native)));
+  TASSERT (Path::equals (clips[0]->original_file(), native) && Path::equals (clips[1]->original_file(), native));
+  project->undo();
+  TASSERT (project->unresolved_assets() == StringS { "missing.ogg" } && !project->can_undo());
+  project->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_replace_asset_invalid_file);
+
+static void
 track_all_clips()
 {
   ProjectImplP project = ProjectImpl::create ("TrackClips");
