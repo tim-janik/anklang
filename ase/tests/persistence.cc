@@ -370,6 +370,11 @@ project_save_as()
   TASSERT (hidden && hidden->original_file() == hidden_sample);
   for (const String &name : { ".settings", "..settings" })
     TASSERT (Path::stringwrite (Path::join (copy, name), "hidden data"));
+  TASSERT (chmod (hidden_sample.c_str(), 0640) == 0);
+  TASSERT (Path::stringwrite (Path::join (copy, ".media", "project.anklang"), "nested asset"));
+  TASSERT (Path::stringwrite (Path::join (copy, ".media", "backup", "asset"), "nested backup", true));
+  for (const String &target : StringS { ".media", "missing" })
+    TASSERT (symlink (target.c_str(), Path::join (copy, target + "-link").c_str()) == 0);
   TASSERT (!project->save_project ("Ignored") && Path::check (Path::join (copy, "backup"), "d"));
   const String second = Path::join (files.root, "Second");
   TASSERT (!project->save_project_as (second));
@@ -378,6 +383,18 @@ project_save_as()
   TASSERT (Path::stringread (hidden->original_file()) == Path::stringread (sample));
   for (const String &name : { ".settings", "..settings" })
     TASSERT (Path::stringread (Path::join (second, name)) == "hidden data");
+  struct stat copied = {};
+  TASSERT (stat (hidden->original_file().c_str(), &copied) == 0 && (copied.st_mode & 0777) == 0640);
+  TASSERT (Path::stringread (Path::join (second, ".media", "project.anklang")) == "nested asset");
+  TASSERT (Path::stringread (Path::join (second, ".media", "backup", "asset")) == "nested backup");
+  for (const String &target : StringS { ".media", "missing" })
+    {
+      char buffer[64];
+      const ssize_t length = readlink (Path::join (second, target + "-link").c_str(), buffer, sizeof (buffer));
+      TASSERT (length == ssize_t (target.size()) && String (buffer, length) == target);
+    }
+  TASSERT (Path::stringwrite (Path::join (second, ".settings"), "changed copy"));
+  TASSERT (Path::stringread (Path::join (copy, ".settings")) == "hidden data");
   TASSERT (!Path::check (Path::join (second, "backup"), "e") && Path::check (Path::join (copy, "project.anklang"), "f"));
   TASSERT (project->save_project_as (copy) == Error::FILE_EXISTS && project->project_dir() == second);
   const size_t ntracks = project->all_tracks().size();

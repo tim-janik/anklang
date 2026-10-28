@@ -766,7 +766,7 @@ ProjectImpl::save_project (const String &utf8name)
 
 /// Copy the files of project dir `src` into `dest`, except its save file and backups.
 static Error
-copy_project_files (const String &src, const String &dest)
+copy_project_files (const String &src, const String &dest, bool project_root = true)
 {
   StringS entries;
   for (const char *pattern : { "*", ".[!.]*", "..?*" })
@@ -774,11 +774,31 @@ copy_project_files (const String &src, const String &dest)
   for (const String &entry : entries)
     {
       const String name = Path::basename (entry);
-      if (name == ".anklang.project" || name == "project.anklang" || name == "backup")
+      if (project_root && (name == ".anklang.project" || name == "project.anklang" || name == "backup"))
         continue;
+      const String target = Path::join (dest, name);
       std::error_code ec;
-      std::filesystem::copy (entry, Path::join (dest, name),
-                             std::filesystem::copy_options::recursive | std::filesystem::copy_options::copy_symlinks, ec);
+      const auto status = std::filesystem::symlink_status (entry, ec);
+      if (ec)
+        return ase_error_from_errno (ec.value());
+      if (std::filesystem::is_regular_file (status))
+        {
+          if (!Path::copy_file (entry, target))
+            return ase_error_from_errno (errno);
+          std::filesystem::permissions (target, status.permissions(), ec);
+        }
+      else if (std::filesystem::is_directory (status))
+        {
+          std::filesystem::create_directory (target, entry, ec);
+          if (!ec)
+            {
+              const Error error = copy_project_files (entry, target, false);
+              if (!!error)
+                return error;
+            }
+        }
+      else
+        std::filesystem::copy (entry, target, std::filesystem::copy_options::copy_symlinks, ec);
       if (ec)
         return ase_error_from_errno (ec.value());
     }
