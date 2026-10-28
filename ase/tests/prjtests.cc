@@ -934,6 +934,44 @@ track_insert_wave_clip()
 TEST_ADD (track_insert_wave_clip);
 
 static void
+track_insert_wave_clip_loop_info()
+{
+  const String root = anklang_cachedir_create(), library = Path::join (root, "library");
+  TestEnvironment samples ("ANKLANG_SAMPLE_DIRS", library), projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "projects"));
+  TASSERT (Path::mkdirs (library));
+  // Half a second of mono PCM, with an ACID root note and four beats.
+  String wav;
+  auto u16 = [&] (uint16_t value) { wav += char (value); wav += char (value >> 8); };
+  auto u32 = [&] (uint32_t value) { u16 (value); u16 (value >> 16); };
+  constexpr uint32_t rate = 8000;
+  wav += "RIFF"; u32 (rate + 68); wav += "WAVEfmt "; u32 (16);
+  u16 (1); u16 (1); u32 (rate); u32 (rate * 2); u16 (2); u16 (16);
+  wav += "acid"; u32 (24); u32 (2); u16 (60); u16 (0); u32 (0);
+  u32 (4); u16 (4); u16 (4); u32 (0);
+  wav += "data"; u32 (rate); wav.append (rate, '\0');
+  ProjectP project = Server::instance().create_project ("Loop Metadata");
+  project->bpm (120);
+  TrackP track = project->create_track();
+  double start = 3;
+  for (const String &dir : StringS { root, library })
+    {
+      const String file = Path::join (dir, "acid-loop.wav");
+      TASSERT (Path::stringwrite (file, wav));
+      ClipP clip = track->insert_wave_clip ("Loop", file, start);
+      TASSERT (clip && Path::equals (clip->original_file(), file));
+      TCMP (clip->position().time.start, ==, start);
+      TCMP (clip->position().time.end, ==, start + 2);
+      start += 3;
+    }
+  TASSERT (project->grep_serialized ("autoTempo=\"1\"") == "autoTempo=\"1\"");
+  TASSERT (project->grep_serialized ("autoPitch=\"1\"") == "autoPitch=\"1\"");
+  TASSERT (project->grep_serialized ("<LOOPINFO[^>]*rootNote=\"60\"[^>]*") != "");
+  project->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (track_insert_wave_clip_loop_info);
+
+static void
 track_insert_wave_clip_symlink_project_dir()
 {
   const String root = anklang_cachedir_create();

@@ -563,9 +563,8 @@ TrackImpl::insert_wave_clip (const String &name, const String &utf8filename, dou
   const te::ClipPosition position = { { tracktion::TimePosition::fromSeconds (start),
                                         tracktion::TimeDuration::fromSeconds (audiofile.getLength()) }, {} };
   auto undo_scope = project_->undo_scope (_("Insert Audio Clip"));
-  auto clip = at->insertNewClip (te::TrackItem::Type::wave, juce::String (name), position, nullptr);
-  if (clip)
-    clip->getSourceFileReference().source = juce::String (reference);
+  juce::ValueTree state (te::IDs::AUDIOCLIP, { { te::IDs::source, juce::String (reference) } });
+  auto clip = at->insertClipWithState (state, juce::String (name), te::TrackItem::Type::wave, position, false, false);
   if (!clip && linked)
     unlink (link.c_str());
   return clip ? ClipImpl::from_trkn (*clip) : nullptr;
