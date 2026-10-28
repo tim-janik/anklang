@@ -70,6 +70,7 @@ ASE_TEST_LIST := \
   project_tempo_values \
   project_track_management \
   project_unnamed_directory \
+  project_unresolved_assets_notify \
   promise_already_resolved_test \
   promise_exception_test \
   promise_int64_test \

@@ -1045,6 +1045,51 @@ asset_clips (ProjectP project)
 }
 
 static void
+project_unresolved_assets_notify()
+{
+  const String root = anklang_cachedir_create(), file = Path::join (root, "missing-notify.ogg");
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "projects"));
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), file));
+  ProjectP project = Server::instance().create_project ("Asset Notifications");
+  TrackP track = project->create_track();
+  track->name ("Assets");
+  TASSERT (track->insert_wave_clip ("Missing", file, 0));
+  TASSERT (unlink (file.c_str()) == 0);
+  const String reference = "samples/missing-notify.ogg";
+  TASSERT (project->unresolved_assets() == StringS { reference });
+  uint notifications = 0;
+  auto connection = project->on_event ("notify:unresolved_assets", [&] (const Event&) { notifications++; });
+  auto expect_assets = [&] (const StringS &expected) {
+    TASSERT (project->unresolved_assets() == expected);
+    TASSERT (notifications > 0);
+    notifications = 0;
+  };
+  auto check_remove = [&] (auto remove) {
+    project->ungroup_undo();
+    remove();
+    expect_assets ({});
+    project->undo();
+    expect_assets ({ reference });
+    project->redo();
+    expect_assets ({});
+    project->undo();
+    expect_assets ({ reference });
+  };
+  check_remove ([&] { asset_clips (project)[0]->remove_self(); });
+  check_remove ([&] {
+    for (const auto &track : project->all_tracks())
+      if (track->name() == "Assets")
+        {
+          track->remove_self();
+          break;
+        }
+  });
+  project->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_unresolved_assets_notify);
+
+static void
 project_asset_references()
 {
   const String root = anklang_cachedir_create();
