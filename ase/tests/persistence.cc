@@ -250,18 +250,21 @@ project_first_save_errors()
           TASSERT (!with_clip || clip);
           const String old_dir = project->project_dir(), old_name = project->name();
           const String dest = Path::join (files.root, "Failed");
+          uint name_notifications = 0;
+          auto name_connection = project->on_event ("notify:name", [&] (const Event&) { name_notifications++; });
           const Error error = with_file_size_limit (64, [&] {
             return save_as ? project->save_project_as (dest) : project->save_project ("Failed");
           });
           TASSERT (!!error && project->unnamed());
+          TASSERT (name_notifications == 0);
           TASSERT (project->project_dir() == old_dir && project->name() == old_name && !Path::check (dest, "e"));
           if (clip)
             TASSERT (Path::check (clip->original_file(), "f") && Path::equals (clip->original_file(), sample));
           if (retry)
             {
-              TASSERT (!(save_as ? project->save_project_as (Path::join (files.root, "Retry")) : project->save_project ("Retry")));
-              TASSERT (!project->unnamed() && project->name() == "Retry");
-              TASSERT (saved_xml (project->project_dir()).find ("name=\"Retry\"") != String::npos);
+              TASSERT (!(save_as ? project->save_project_as (dest) : project->save_project ("Failed")));
+              TASSERT (!project->unnamed() && project->name() == "Failed" && name_notifications == 1);
+              TASSERT (saved_xml (project->project_dir()).find ("name=\"Failed\"") != String::npos);
             }
           const String discard_dir = project->project_dir();
           TASSERT (!project->remove_project_dir() && project->project_dir().empty());
