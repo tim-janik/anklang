@@ -50,6 +50,7 @@ ASE_TEST_LIST := \
   project_dir_lifetime \
   project_dir_names \
   project_dir_roots \
+  project_first_save_errors \
   project_grep_serialized \
   project_length \
   project_missing_vst3 \

@@ -237,6 +237,41 @@ project_save_close_errors()
 TEST_ADD (project_save_close_errors);
 
 static void
+project_first_save_errors()
+{
+  ProjectFiles files;
+  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  for (bool save_as : { false, true })
+    for (bool with_clip : { false, true })
+      for (bool retry : { false, true })
+        {
+          ProjectP project = Server::instance().create_project ("Before");
+          ClipP clip = with_clip ? project->create_track()->insert_wave_clip ("Sample", sample, 0) : nullptr;
+          TASSERT (!with_clip || clip);
+          const String old_dir = project->project_dir(), old_name = project->name();
+          const String dest = Path::join (files.root, "Failed");
+          const Error error = with_file_size_limit (64, [&] {
+            return save_as ? project->save_project_as (dest) : project->save_project ("Failed");
+          });
+          TASSERT (!!error && project->unnamed());
+          TASSERT (project->project_dir() == old_dir && project->name() == old_name && !Path::check (dest, "e"));
+          if (clip)
+            TASSERT (Path::check (clip->original_file(), "f") && Path::equals (clip->original_file(), sample));
+          if (retry)
+            {
+              TASSERT (!(save_as ? project->save_project_as (Path::join (files.root, "Retry")) : project->save_project ("Retry")));
+              TASSERT (!project->unnamed() && project->name() == "Retry");
+              TASSERT (saved_xml (project->project_dir()).find ("name=\"Retry\"") != String::npos);
+            }
+          const String discard_dir = project->project_dir();
+          TASSERT (!project->remove_project_dir() && project->project_dir().empty());
+          TASSERT (discard_dir.empty() || !Path::check (discard_dir, "e"));
+          project->discard();
+        }
+}
+TEST_ADD (project_first_save_errors);
+
+static void
 project_unnamed_directory()
 {
   ProjectFiles files;

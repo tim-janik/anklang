@@ -725,34 +725,43 @@ ProjectImpl::save_project (const String &utf8name)
   const String basename = project_dir_basename (string_strip (utf8name));
   if (naming && (basename.empty() || is_unnamed_dirname (basename)))
     return Error::INVALID_PROPERTY;
+  edit_->flushState();
+  String dest = project_dir_;
   if (naming)
     {
-      if (project_dir_.empty())
+      dest = reserve_project_dir (project_dir_.empty() ? projects_root() : Path::dirname (project_dir_), basename);
+      if (dest.empty())
+        return ase_error_from_errno (errno);
+      if (project_dir_.empty() && !make_anklang_dir (dest))
         {
-          if (create_project_dir (basename).empty())
-            return ase_error_from_errno (errno);
+          const Error error = ase_error_from_errno (errno);
+          Path::rmrf (dest);
+          return error;
         }
-      else
-        {
-          const String dest = reserve_project_dir (Path::dirname (project_dir_), basename);
-          if (dest.empty())
-            return ase_error_from_errno (errno);
-          if (!Path::rename (project_dir_, dest))
-            {
-              const Error error = ase_error_from_errno (errno);
-              rmdir (dest.c_str());
-              return error;
-            }
-          project_dir_ = dest;
-          project_dir_changed();
-        }
-      edit_->state.setProperty (te::IDs::name, juce::String (string_strip (utf8name)), nullptr);
     }
-  edit_->flushState();
-  const Error error = write_project_file (project_dir_, edit_xml (edit_->state));
-  if (!error)
-    edit_->resetChangedStatus();
-  return error;
+  auto state = edit_->state;
+  if (naming)
+    {
+      state = state.createCopy();
+      state.setProperty (te::IDs::name, juce::String (string_strip (utf8name)), nullptr);
+    }
+  Error error = write_project_file (project_dir_.empty() ? dest : project_dir_, edit_xml (state));
+  if (!error && naming && !project_dir_.empty() && !Path::rename (project_dir_, dest))
+    error = ase_error_from_errno (errno);
+  if (!!error)
+    {
+      if (naming)
+        Path::rmrf (dest);
+      return error;
+    }
+  if (naming)
+    {
+      project_dir_ = dest;
+      edit_->state.setProperty (te::IDs::name, juce::String (string_strip (utf8name)), nullptr);
+      project_dir_changed();
+    }
+  edit_->resetChangedStatus();
+  return Error::NONE;
 }
 
 /// Copy the files of project dir `src` into `dest`, except its save file and backups.
@@ -787,37 +796,43 @@ ProjectImpl::save_project_as (const String &utf8path)
     return Error::INVALID_PROPERTY;
   if (!Path::mkdirs (Path::dirname (dir)) || mkdir (dir.c_str(), 0700) != 0)
     return ase_error_from_errno (errno);
+  edit_->flushState();
   const String old_dir = project_dir_;
   const bool naming = unnamed();
-  // Like the first Save, an unnamed project moves into its new dir
-  if (naming && !old_dir.empty() && Path::rename (old_dir, dir))
-    {
-      project_dir_ = dir;
-      project_dir_changed();
-      edit_->state.setProperty (te::IDs::name, juce::String (basename), nullptr);
-      return save_project ("");
-    }
-  Error error = make_anklang_dir (dir) ? Error::NONE : ase_error_from_errno (errno);
-  if (!error && !old_dir.empty())
-    error = copy_project_files (old_dir, dir);
-  const juce::var old_name = edit_->state.getProperty (te::IDs::name);
+  auto state = edit_->state;
   if (naming)
-    edit_->state.setProperty (te::IDs::name, juce::String (basename), nullptr);
-  edit_->flushState();
-  if (!error)
-    error = write_project_file (dir, edit_xml (edit_->state));
+    {
+      state = state.createCopy();
+      state.setProperty (te::IDs::name, juce::String (basename), nullptr);
+    }
+  const String xml = edit_xml (state);
+  struct stat old_stat = {}, new_stat = {};
+  bool moved = false;
+  // Write before moving so a failed save keeps the unnamed directory.
+  if (naming && !old_dir.empty() && stat (old_dir.c_str(), &old_stat) == 0 && stat (dir.c_str(), &new_stat) == 0 &&
+      old_stat.st_dev == new_stat.st_dev && !write_project_file (old_dir, xml))
+    moved = Path::rename (old_dir, dir);
+  Error error = Error::NONE;
+  if (!moved)
+    {
+      error = make_anklang_dir (dir) ? Error::NONE : ase_error_from_errno (errno);
+      if (!error && !old_dir.empty())
+        error = copy_project_files (old_dir, dir);
+      if (!error)
+        error = write_project_file (dir, xml);
+    }
   if (!!error)
     {
-      if (naming)
-        edit_->state.setProperty (te::IDs::name, old_name, nullptr);
       Path::rmrf (dir);
       return error;
     }
   project_dir_ = dir;
+  if (naming)
+    edit_->state.setProperty (te::IDs::name, juce::String (basename), nullptr);
   project_dir_changed();
   edit_->resetChangedStatus();
-  if (naming && !old_dir.empty())
-    Path::rmrf (old_dir); // rename failed, e.g. across file systems
+  if (naming && !old_dir.empty() && !moved)
+    Path::rmrf (old_dir);
   return Error::NONE;
 }
 
