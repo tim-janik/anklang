@@ -154,7 +154,7 @@ project_dir_exit()
   int status = -1;
   TASSERT (g_spawn_sync (nullptr, argv.data(), nullptr, G_SPAWN_SEARCH_PATH, nullptr, nullptr, nullptr, nullptr, &status, nullptr));
   TASSERT (status == 0);
-  TASSERT (Path::stringread (Path::join (projects, "Exit/autosave/snapshot")) == "exit state");
+  TASSERT (Path::stringread (Path::join (projects, "Unnamed-1/autosave/snapshot")) == "exit state");
   anklang_cachedir_cleanup (root);
 }
 TEST_ADD (project_dir_exit);
@@ -176,7 +176,7 @@ project_dir_roots()
         ProjectImplP project = ProjectImpl::create ("Roots");
         TASSERT (project->project_dir (false).empty());
         const String dir = project->project_dir (true);
-        TASSERT (dir == Path::join (root, expected[i], "Roots"));
+        TASSERT (dir == Path::join (root, expected[i], "Unnamed-1"));
         TASSERT (setenv ("ANKLANG_PROJECTS_DIR", "", 1) == 0);
         project->name ("Renamed");
         TASSERT (project->project_dir (true) == dir);
@@ -197,19 +197,30 @@ project_dir_names()
   for (const String &suffix : StringS { "", "(1)", "(2)" })
     {
       ProjectImplP project = ProjectImpl::create ("Same Name");
-      TASSERT (project->project_dir (true) == Path::join (root, "Same Name" + suffix));
+      TASSERT (project->project_dir (true) == Path::join (root, "Unnamed-1") && project->unnamed());
+      TASSERT (project->save_project ("") == Error::INVALID_PROPERTY);
+      TASSERT (!project->save_project ("Same Name"));
+      TASSERT (project->project_dir (false) == Path::join (root, "Same Name" + suffix));
       project->discard();
     }
   const String blocked = Path::join (root, "Blocked");
   TASSERT (Path::stringwrite (blocked, "keep this file"));
   ProjectImplP project = ProjectImpl::create ("Blocked");
-  TASSERT (project->project_dir (true) == blocked + "(1)");
+  TASSERT (!project->save_project ("Blocked"));
+  TASSERT (project->project_dir (false) == blocked + "(1)");
   TASSERT (Path::stringread (blocked) == "keep this file");
   project->discard();
   for (const String &name : StringS { "", ".", "..", "../escape", "a/b\\c" })
     {
       ProjectImplP project = ProjectImpl::create (name);
       TASSERT (Path::dircontains (root, project->project_dir (true)));
+      if (name.empty() || name == "." || name == "..")
+        TASSERT (project->save_project (name) == Error::INVALID_PROPERTY);
+      else
+        {
+          TASSERT (!project->save_project (name));
+          TASSERT (Path::dircontains (root, project->project_dir (false)));
+        }
       project->discard();
     }
   anklang_cachedir_cleanup (root);
@@ -873,6 +884,7 @@ track_insert_wave_clip()
   const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
   ClipP clip = track->insert_wave_clip ("Piano", sample, 1);
   TASSERT (clip && clip->position().time.start == 1 && clip->position().time.end > 1);
+  TASSERT (project->unnamed());
   const String samples = Path::join (project->project_dir (false), "samples");
   auto links = [&] { StringS files; Path::glob (Path::join (samples, "*"), files); return files.size(); };
   const String link = Path::join (samples, Path::basename (sample));

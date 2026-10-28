@@ -841,6 +841,20 @@ vpath_find (const String &file, const String &mode)
   return file;
 }
 
+/// Escape `*?[]\\` in `path`, so glob() matches it literally.
+String
+glob_escape (const String &path)
+{
+  String escaped;
+  for (char c : path)
+    {
+      if (strchr ("*?[]\\", c))
+        escaped += '\\';
+      escaped += c;
+    }
+  return escaped;
+}
+
 /// Create list with directories and filenames matching `pathpattern` with shell wildcards.
 void
 glob (const String &pathpattern, StringS &dirs, StringS &files)

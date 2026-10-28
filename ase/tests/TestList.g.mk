@@ -43,17 +43,27 @@ ASE_TEST_LIST := \
   plugin_creation \
   plugin_name \
   project_creation \
+  project_dir_clip_files \
+  project_directory_audio_playback \
   project_dir_exit \
   project_dir_exit_child \
   project_dir_lifetime \
   project_dir_names \
   project_dir_roots \
+  project_first_save_errors \
   project_grep_serialized \
   project_length \
+  project_missing_vst3 \
   project_name_notifications \
+  project_open_errors \
   project_playback_state \
+  project_save_as \
+  project_save_backups \
+  project_save_close_errors \
+  project_save_open \
   project_tempo_values \
   project_track_management \
+  project_unnamed_directory \
   promise_already_resolved_test \
   promise_exception_test \
   promise_int64_test \
@@ -76,6 +86,7 @@ ASE_TEST_LIST := \
   storage_roundtrip \
   string_tests \
   test_audio_sample_load \
+  test_project_directory_audio \
   test_serializable_hierarchy \
   track_all_clips \
   track_control_classification \

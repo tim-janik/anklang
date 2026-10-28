@@ -346,7 +346,7 @@ make_auth_string()
   return auth;
 }
 
-static void
+static CoTaskVoid
 run_tests_and_quit ()
 {
   const char *anklang_projects_dir = getenv ("ANKLANG_PROJECTS_DIR");
@@ -357,9 +357,9 @@ run_tests_and_quit ()
         fatal_error ("failed to create the test projects root");
     }
   if (check_test_names.empty())
-    Test::run();
+    co_await Test::run();
   else
-    Test::run (check_test_names);
+    co_await Test::run (check_test_names);
   main_loop->quit (0);
 }
 
@@ -597,10 +597,9 @@ main (int argc, char *argv[])
   ProjectImplP preload_project;
   for (const auto &filename : App.args)
     {
-      preload_project = ProjectImpl::create (Path::basename (filename));
-      Error error = Error::NO_MEMORY;
-      if (preload_project)
-        error = preload_project->load_project (filename);
+      const Error error = Server::instance().open_project (filename);
+      if (!error)
+        preload_project = std::dynamic_pointer_cast<ProjectImpl> (Server::instance().last_project());
       diag ("Main: load project: %s: %s", filename, ase_error_blurb (error));
       if (!!error)
         warning ("%s: failed to load project: %s", filename, ase_error_blurb (error));

@@ -198,30 +198,37 @@ export class AppClass {
     let newproject = project_or_path instanceof Ase.Project ? project_or_path : null;
     if (!newproject)
       {
-	// Create afresh
-	newproject = await Ase.server.create_project ('Untitled');
-	// Loads from disk
         if (project_or_path)
           {
-            const error = await newproject.load_project (project_or_path);
-            if (error != Ase.Error.NONE)
+            const error = await Ase.server.open_project (project_or_path);
+            if (error !== Ase.Error.NONE)
               return error;
-            newproject.name = displaybasename (project_or_path);
+            newproject = await Ase.server.last_project();
           }
+        else
+          newproject = await Ase.server.create_project ('Untitled');
       }
     // Swap Shell for the new project
     await this.assign_project (newproject, 'b-app');
     return Ase.Error.NONE;
   }
-  async save_project (projectpath: string, collect = true, project = this.project)
+  async save_project (name: string, project = Shell.project)
   {
     Shell.show_spinner();
     let error = !project ? Ase.Error.INTERNAL :
-                project.save_project (projectpath, collect);
+                project.save_project (name);
     error = await error;
     // await new Promise (r => setTimeout (r, 3 * 1000)); // artificial wait to test spinner
     Shell.hide_spinner();
     return error;
+  }
+  close_window()
+  {
+    window.close();
+    // When running in the browser, window.close() might not work.
+    setTimeout (() => {
+      window.location.href = 'about:blank';
+    }, 0);
   }
   status (...args: any[])
   {

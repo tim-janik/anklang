@@ -354,6 +354,18 @@ ase/lint: node_modules/.npm.done
 .PHONY: ase/lint
 lint: ase/lint
 
+lint-event-pumping: node_modules/.npm.done
+	$(QCHECK)
+	$Q $(RUNTS) misc/synsmell.ts --none --ban-event-pumping=1 --errors $(wildcard ase/*.[hc] ase/*.*[hc] ase/*/*.*[hc] jsonipc/*.hh)
+.PHONY: lint-event-pumping
+lint: lint-event-pumping
+
+lint-test-api: node_modules/.npm.done
+	$(QCHECK)
+	$Q $(RUNTS) misc/synsmell.ts --none --test-api-only=1 --errors $(filter %.cc %.hh %.cpp %.hpp %.h %.cxx, $(filter ase/tests/%, $(WILDCARD_FILES)))
+.PHONY: lint-test-api
+lint: lint-test-api
+
 # == check-ase-tests ==
 .PHONY: check-ase-tests
 define ASE_TEST_CHECK

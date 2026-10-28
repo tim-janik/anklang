@@ -3,17 +3,18 @@
 
 #include "project.hh"
 #include "plugin.hh"
-#include "jsonipc/jsonipc.hh"
 #include "main.hh"
-#include "compress.hh"
 #include "path.hh"
+#include "platform.hh"
 #include "strings.hh"
 #include "unicode.hh"
 #include "storage.hh"
 #include "server.hh"
 #include "internal.hh"
 #include "devices/liquidsfz/liquidsfzplugin.hh"
+#include <filesystem>
 #include <list>
+#include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
 
@@ -36,6 +37,11 @@ static std::vector<ProjectImplP> &g_projects = *new std::vector<ProjectImplP>();
 
 static Preference projects_dir_pref ({
   .ident = "anklang-projects-dir", .label = _("Projects Directory"), .initial = "", .hints = STANDARD,
+});
+
+static Preference sync_saves_pref ({
+  .ident = "anklang-fsync-saves", .label = _("Sync Saves to Disk"), .initial = false, .hints = STANDARD,
+  .metadata = { String ("descr=") + _("Wait until each save reaches the storage device. Slow, and wears out flash memory.") },
 });
 
 ProjectP
@@ -245,27 +251,6 @@ public:
 
 
 // == ProjectImpl ==
-using StringPairS = std::vector<std::tuple<String,String>>;
-
-struct ProjectImpl::PStorage {
-  String loading_file;
-  String writer_cachedir;
-  String anklang_dir;
-  StringPairS writer_files;
-  StringPairS asset_hashes;
-  PStorage (PStorage **ptrp) :
-    ptrp_ (ptrp)
-  {
-    *ptrp_ = this;
-  }
-  ~PStorage()
-  {
-    *ptrp_ = nullptr;
-  }
-private:
-  PStorage **const ptrp_ = nullptr;
-};
-
 static void
 test_sfz (ProjectImpl *project, te::Edit *edit, const String &filename)
 {
@@ -324,23 +309,38 @@ trkn_has_track_name (te::Edit &edit, const juce::String &name)
   return found;
 }
 
-ProjectImpl::ProjectImpl()
+ProjectImpl::ProjectImpl (const juce::ValueTree &state, const String &dir, bool new_project) :
+  project_dir_ (dir)
 {
-  edit_ = std::make_unique<te::Edit> (*trkn_engine(), te::Edit::forEditing);
+  // Tracktion stores clip files relative to the marker in the project dir.
+  edit_ = std::make_unique<te::Edit> (te::Edit::Options {
+    .engine = *trkn_engine(), .editState = state,
+    .editProjectItemID = te::ProjectItemID::fromProperty (state, te::IDs::projectID),
+    .editFileRetriever = [this] {
+      // Do not create a dir while the Edit loads or is destroyed.
+      const String dir = project_dir (edit_ != nullptr);
+      return dir.empty() ? juce::File() : juce::File (Path::join (dir, ".anklang.project"));
+    },
+    .filePathResolver = [this] (const juce::String &path) {
+      if (Path::isabs (path.toStdString()))
+        return juce::File (path);
+      return project_dir_.empty() ? juce::File() : juce::File (project_dir_).getChildFile (path);
+    },
+    .numAudioTracks = new_project ? 1u : 0u,
+  });
+  if (new_project)
+    if (auto track = te::getFirstAudioTrack (*edit_))
+      // From Edit::Edit(Engine&, EditRole), don't route AudioTrack to default MIDI
+      track->getOutput().setOutputToDefaultDevice (false);
   if (edit_) {
     register_ase_obj (this, *edit_);
     transport_listener_ = std::make_unique<TransportListener> (edit_->getTransport(), *this);
   }
   if (!edit_ || !transport_listener_)
     fatal_error ("failed to create tracktion::engine::edit");
-  // Tracktion stores clip files relative to the marker in the project dir
-  edit_->editFileRetriever = [this] {
-    const String dir = project_dir (true);
-    return dir.empty() ? juce::File() : juce::File (Path::join (dir, ".anklang.project"));
-  };
-
-  if (auto filename = getenv ("SFZ"))
-    test_sfz (this, edit_.get(), filename);
+  if (new_project)
+    if (auto filename = getenv ("SFZ")) // TODO: remove SFZ test code
+      test_sfz (this, edit_.get(), filename);
 
   edit_->visitAllTracksRecursive ([] (te::Track &track) {
     if (track.isAudioTrack() || track.isFolderTrack())
@@ -445,10 +445,10 @@ ProjectImpl::foreach_track (const std::function<bool(Track&,int)> &cb) const
 ProjectImplP
 ProjectImpl::create (const String &projectname)
 {
-  ProjectImplP project = ProjectImpl::make_shared();
+  auto state = te::createEmptyEdit (*trkn_engine());
+  state.setProperty (te::IDs::name, juce::String (projectname), nullptr);
+  ProjectImplP project = ProjectImpl::make_shared (state, "", true);
   g_projects.push_back (project);
-  project->name (projectname);
-  project->edit_->getUndoManager().clearUndoHistory();
   return project;
 }
 
@@ -466,21 +466,6 @@ ProjectImpl::remove_self ()
 {
   // Project has no parent; just emit the `removed` event
   GadgetImpl::remove_self();
-}
-
-static bool
-is_anklang_dir (const String &path)
-{
-  return Path::check (Path::join (path, ".anklang.project"), "r");
-}
-
-static String
-find_anklang_parent_dir (const String &path)
-{
-  for (String p = path; !p.empty() && !Path::isroot (p); p = Path::dirname (p))
-    if (is_anklang_dir (p))
-      return p;
-  return "";
 }
 
 static bool
@@ -508,42 +493,116 @@ projects_root()
   return Path::abspath (Path::expand_tilde (root));
 }
 
-/// Persistent directory for this project's files, made on first use if `create` is true.
+static String
+project_dir_basename (String name)
+{
+  for (char &c : name)
+    if (c == '/' || c == '\\' || uint8_t (c) < 32 || c == 127)
+      c = '_';
+  return name == "." || name == ".." ? "" : name;
+}
+
+static String
+reserve_project_dir (const String &root, const String &basename)
+{
+  if (Path::mkdirs (root))
+    for (uint i = 0; ; i++)
+      {
+        const String leaf = basename.empty() ? string_format ("Unnamed-%u", i + 1) :
+                            i ? string_format ("%s(%u)", basename, i) : basename;
+        const String candidate = Path::join (root, leaf);
+        if (mkdir (candidate.c_str(), 0700) == 0)
+          return candidate;
+        if (errno != EEXIST)
+          break;
+      }
+  return "";
+}
+
+String
+ProjectImpl::create_project_dir (const String &basename)
+{
+  const String dir = reserve_project_dir (projects_root(), basename);
+  if (dir.empty() || !make_anklang_dir (dir))
+    {
+      const int err = errno;
+      if (!dir.empty())
+        Path::rmrf (dir);
+      warning ("Project: failed to create project dir: %s", strerror (err));
+      errno = err;
+      return "";
+    }
+  project_dir_ = dir;
+  project_dir_changed();
+  return project_dir_;
+}
+
 String
 ProjectImpl::project_dir (bool create)
 {
   if (project_dir_.empty() && create)
-    {
-      const String root = projects_root();
-      String basename = name(), dir;
-      for (char &c : basename)
-        if (c == '/' || c == '\\' || uint8_t (c) < 32 || c == 127)
-          c = '_';
-      if (basename.empty() || basename == "." || basename == "..")
-        basename = "Untitled";
-      if (Path::mkdirs (root))
-        for (uint i = 0; ; i++)
-          {
-            const String candidate = Path::join (root, i ? string_format ("%s(%u)", basename, i) : basename);
-            if (mkdir (candidate.c_str(), 0700) == 0)
-              {
-                dir = candidate;
-                break;
-              }
-            if (errno != EEXIST)
-              break;
-          }
-      if (dir.empty() || !make_anklang_dir (dir))
-        {
-          const int err = errno;
-          if (!dir.empty())
-            Path::rmrf (dir);
-          warning ("Project: failed to create project dir: %s", strerror (err));
-          return "";
-        }
-      project_dir_ = dir;
-    }
+    return create_project_dir ("");
   return project_dir_;
+}
+
+static bool
+is_unnamed_dirname (const String &name)
+{
+  return !Re::grep ("^Unnamed-[1-9][0-9]*$", name).empty();
+}
+
+String
+ProjectImpl::project_dir () const
+{
+  return encodefs (project_dir_);
+}
+
+void
+ProjectImpl::project_dir (const String&)
+{
+  warning ("Project.project_dir is read-only");
+}
+
+bool
+ProjectImpl::unnamed () const
+{
+  return project_dir_.empty() || is_unnamed_dirname (Path::basename (project_dir_));
+}
+
+void
+ProjectImpl::unnamed (bool)
+{
+  warning ("Project.unnamed is read-only");
+}
+
+void
+ProjectImpl::project_dir_changed ()
+{
+  return_unless (!!edit_);
+  edit_->sendSourceFileUpdate();
+  for (const auto &track : all_tracks())
+    for (const auto &clip : track->all_clips())
+      clip->emit_notify ("original_file");
+  emit_notify ("project_dir");
+  emit_notify ("unnamed");
+}
+
+Error
+ProjectImpl::remove_project_dir ()
+{
+  if (discarded_ || !edit_)
+    return Error::NONE;
+  if (project_dir_.empty())
+    return Error::NONE;
+  if (!Path::check (Path::join (project_dir_, ".anklang.project"), "f"))
+    return Error::BAD_PROJECT;
+  stop_playback();
+  Path::rmrf (project_dir_);
+  if (Path::check (project_dir_, "e"))
+    return Error::FILE_WRITE_FAILED;
+  project_dir_.clear();
+  project_dir_changed();
+  return Error::NONE;
 }
 
 /// Path of `file` in the project dir, files from elsewhere get a link in `samples/`.
@@ -576,105 +635,6 @@ ProjectImpl::link_sample (const String &file, bool &created)
   return "";
 }
 
-Error
-ProjectImpl::save_project (const String &utf8filename, bool collect)
-{
-  const String savepath = decodefs (utf8filename);
-  assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
-  PStorage storage (&storage_); // storage_ = &storage;
-  const String dotanklang = ".anklang";
-  String projectfile, path = Path::normalize (Path::abspath (savepath));
-  // check path is a file
-  if (path.back() == '/' ||
-      Path::check (path, "d"))                  // need file not directory
-    return Error::FILE_IS_DIR;
-  // force .anklang extension
-  if (!string_endswith (path, dotanklang))
-    path += dotanklang;
-  // existing files need proper project directories
-  if (Path::check (path, "e"))                  // existing file
-    {
-      const String dir = Path::dirname (path);
-      if (!is_anklang_dir (dir))
-        return Error::NO_PROJECT_DIR;
-      projectfile = Path::basename (path);
-      path = dir;                               // file inside project dir
-    }
-  else                                          // new file name
-    {
-      projectfile = Path::basename (path);
-      const String parentdir = Path::dirname (path);
-      if (is_anklang_dir (parentdir))
-        path = parentdir;
-      else {                                    // use projectfile stem as dir
-        assert_return (string_endswith (path, dotanklang), Error::INTERNAL);
-        path.resize (path.size() - dotanklang.size());
-      }
-    }
-  // create parent directory
-  if (!Path::mkdirs (path))
-    return ase_error_from_errno (errno);
-  // ensure path is_anklang_dir
-  if (!make_anklang_dir (path))
-    return ase_error_from_errno (errno);
-  storage_->anklang_dir = path;
-  const String abs_projectfile = Path::join (path, projectfile);
-  // create backups
-  if (Path::check (abs_projectfile, "e"))
-    {
-      const String backupdir = Path::join (path, "backup");
-      if (!Path::mkdirs (backupdir))
-        return ase_error_from_errno (errno ? errno : EPERM);
-      const StringPair parts = Path::split_extension (projectfile, true);
-      const String backupname = Path::join (backupdir, parts.first + now_strftime (" (%y%m%dT%H%M%S)") + parts.second);
-      const String backupglob = Path::join (backupdir, parts.first + " ([0-9]*[0-9]T[0-9]*[0-9])" + parts.second);
-      if (!Path::rename (abs_projectfile, backupname))
-        ASE_SERVER.user_note (string_format ("## Backup failed\n%s: \\\nFailed to create backup: \\\n%s",
-                                             backupname, ase_error_blurb (ase_error_from_errno (errno))));
-      else // successful backup, now prune
-        {
-          StringS backups;
-          Path::glob (backupglob, backups);
-          strings_version_sort (&backups, true);
-          const int bmax = 24;
-          while (backups.size() > bmax)
-            {
-              const String bfile = backups.back();
-              backups.pop_back();
-              Path::rmrf (bfile);
-            }
-        }
-    }
-  // start writing
-  anklang_cachedir_clean_stale();
-  storage_->writer_cachedir = anklang_cachedir_create();
-  storage_->asset_hashes.clear();
-  StorageWriter ws;
-  Error error = ws.open_with_mimetype (abs_projectfile, "application/x-anklang");
-  if (!error)
-    {
-      // serialize Project (TODO: use tracktion_engine saving & loading)
-      error = ws.store_file_data ("project.json", "{}\n");
-    }
-  if (!error)
-    for (const auto &[path, dest] : storage_->writer_files) {
-      error = ws.store_file (dest, path);
-      if (!!error) {
-        printerr ("%s: %s: %s: %s\n", program_alias(), __func__, path, ase_error_blurb (error));
-        break;
-      }
-    }
-  storage_->writer_files.clear();
-  if (!error)
-    error = ws.close();
-  if (!error)
-    saved_filename_ = abs_projectfile;
-  if (!!error)
-    ws.remove_opened();
-  anklang_cachedir_cleanup (storage_->writer_cachedir);
-  return error;
-}
-
 // All Edit XML is written here, so grep patterns match saved files: `\n` line ends, no wrapping
 static String
 edit_xml (const juce::ValueTree &state)
@@ -685,163 +645,258 @@ edit_xml (const juce::ValueTree &state)
   return state.toXmlString (format).toStdString();
 }
 
-String
-ProjectImpl::writer_file_name (const String &fspath) const
+/// Flush `path` to the storage device with fsync(), which is slow and wears out flash memory.
+static Error
+sync_path (const String &path)
 {
-  assert_return (storage_ != nullptr, "");
-  assert_return (!storage_->writer_cachedir.empty(), "");
-  return Path::join (storage_->writer_cachedir, fspath);
+  const int fd = open (path.c_str(), O_RDONLY | O_CLOEXEC);
+  if (fd < 0)
+    return ase_error_from_errno (errno);
+  Error error = fsync (fd) < 0 ? ase_error_from_errno (errno) : Error::NONE;
+  if (close (fd) < 0 && !error)
+    error = ase_error_from_errno (errno);
+  return error;
+}
+
+/// Replace `dir/project.anklang` with `xml`, after copying the old file into `dir/backup/`.
+static Error
+write_project_file (const String &dir, const String &xml)
+{
+  String temporary = Path::join (dir, ".project.anklang-XXXXXX");
+  const int fd = mkstemp (temporary.data());
+  if (fd < 0)
+    return ase_error_from_errno (errno);
+  close (fd);
+  StorageWriter writer;
+  Error error = writer.open_with_mimetype (temporary, "application/x-anklang");
+  if (!error)
+    error = writer.store_file_data ("edit.tracktionedit", xml);
+  if (!error)
+    error = writer.close();
+  else
+    writer.remove_opened();
+  const String target = Path::join (dir, "project.anklang");
+  const String backupdir = Path::join (dir, "backup");
+  if (!error && Path::check (target, "e"))
+    {
+      Error backup_error = Error::NONE;
+      if (!Path::mkdirs (backupdir))
+        backup_error = ase_error_from_errno (errno);
+      else
+        for (uint64 stamp = timestamp_realtime(); ; stamp++)
+          {
+            const String backup = Path::join (backupdir, string_format ("project (%s-%u).anklang",
+                                                    now_strftime ("%y%m%dT%H%M%S"), stamp));
+            if (Path::copy_file (target, backup))
+              break;
+            if (errno != EEXIST)
+              {
+                backup_error = ase_error_from_errno (errno);
+                break;
+              }
+          }
+      if (!!backup_error)
+        ASE_SERVER.user_note (string_format ("## Backup failed\n%s: %s", backupdir, ase_error_blurb (backup_error)));
+    }
+  if (!error && !Path::rename (temporary, target))
+    error = ase_error_from_errno (errno);
+  if (!!error)
+    {
+      unlink (temporary.c_str());
+      return error;
+    }
+  StringS backups;
+  Path::glob (Path::join (Path::glob_escape (backupdir), "project (*).anklang"), backups);
+  strings_version_sort (&backups, true);
+  while (backups.size() > 24)
+    {
+      Path::rmrf (backups.back());
+      backups.pop_back();
+    }
+  return sync_saves_pref.getb() ? sync_path (target) : Error::NONE;
 }
 
 Error
-ProjectImpl::writer_add_file (const String &fspath)
+ProjectImpl::save_project (const String &utf8name)
 {
-  assert_return (storage_ != nullptr, Error::INTERNAL);
-  assert_return (!storage_->writer_cachedir.empty(), Error::INTERNAL);
-  if (!Path::check (fspath, "frw"))
-    return Error::FILE_NOT_FOUND;
-  if (!string_startswith (fspath, storage_->writer_cachedir))
-    return Error::FILE_OPEN_FAILED;
-  storage_->writer_files.push_back ({ fspath, Path::basename (fspath) });
+  if (discarded_ || !edit_)
+    return Error::INTERNAL;
+  const bool naming = unnamed();
+  const String basename = project_dir_basename (string_strip (utf8name));
+  if (naming && (basename.empty() || is_unnamed_dirname (basename)))
+    return Error::INVALID_PROPERTY;
+  edit_->flushState();
+  String dest = project_dir_;
+  if (naming)
+    {
+      dest = reserve_project_dir (project_dir_.empty() ? projects_root() : Path::dirname (project_dir_), basename);
+      if (dest.empty())
+        return ase_error_from_errno (errno);
+      if (project_dir_.empty() && !make_anklang_dir (dest))
+        {
+          const Error error = ase_error_from_errno (errno);
+          Path::rmrf (dest);
+          return error;
+        }
+    }
+  auto state = edit_->state;
+  if (naming)
+    {
+      state = state.createCopy();
+      state.setProperty (te::IDs::name, juce::String (string_strip (utf8name)), nullptr);
+    }
+  Error error = write_project_file (project_dir_.empty() ? dest : project_dir_, edit_xml (state));
+  if (!error && naming && !project_dir_.empty() && !Path::rename (project_dir_, dest))
+    error = ase_error_from_errno (errno);
+  if (!!error)
+    {
+      if (naming)
+        Path::rmrf (dest);
+      return error;
+    }
+  if (naming)
+    {
+      project_dir_ = dest;
+      edit_->state.setProperty (te::IDs::name, juce::String (string_strip (utf8name)), nullptr);
+      project_dir_changed();
+    }
+  edit_->resetChangedStatus();
   return Error::NONE;
 }
 
-Error
-ProjectImpl::writer_collect (const String &fspath, String *hexhashp)
+/// Copy the files of project dir `src` into `dest`, except its save file and backups.
+static Error
+copy_project_files (const String &src, const String &dest, bool project_root = true)
 {
-  assert_return (storage_ != nullptr, Error::INTERNAL);
-  assert_return (!storage_->anklang_dir.empty(), Error::INTERNAL);
-  if (!Path::check (fspath, "fr"))
-    return Error::FILE_NOT_FOUND;
-  // determine hash of file to collect
-  const String hexhash = string_to_hex (blake3_hash_file (fspath));
-  if (hexhash.empty())
-    return ase_error_from_errno (errno ? errno : EIO);
-  // resolve against existing hashes
-  for (const auto &hf : storage_->asset_hashes)
-    if (std::get<0> (hf) == hexhash)
-      {
-        *hexhashp = hexhash;
-        return Error::NONE;
-      }
-  // file may be within project directory
-  String relpath;
-  if (Path::dircontains (storage_->anklang_dir, fspath, &relpath))
+  StringS entries;
+  for (const char *pattern : { "*", ".[!.]*", "..?*" })
+    Path::glob (Path::join (Path::glob_escape (src), pattern), entries);
+  for (const String &entry : entries)
     {
-      storage_->asset_hashes.push_back ({ hexhash, relpath });
-      *hexhashp = hexhash;
-      return Error::NONE;
-    }
-  // determine unique path name
-  const size_t file_size = Path::file_size (fspath);
-  const String basedir = storage_->anklang_dir;
-  relpath = Path::join ("samples", Path::basename (fspath));
-  String dest = Path::join (basedir, relpath);
-  size_t i = 0;
-  while (Path::check (dest, "e"))
-    {
-      if (file_size == Path::file_size (dest))
+      const String name = Path::basename (entry);
+      if (project_root && (name == ".anklang.project" || name == "project.anklang" || name == "backup"))
+        continue;
+      const String target = Path::join (dest, name);
+      std::error_code ec;
+      const auto status = std::filesystem::symlink_status (entry, ec);
+      if (ec)
+        return ase_error_from_errno (ec.value());
+      if (std::filesystem::is_regular_file (status))
         {
-          const String althash = string_to_hex (blake3_hash_file (dest));
-          if (althash == hexhash)
+          if (!Path::copy_file (entry, target))
+            return ase_error_from_errno (errno);
+          std::filesystem::permissions (target, status.permissions(), ec);
+        }
+      else if (std::filesystem::is_directory (status))
+        {
+          std::filesystem::create_directory (target, entry, ec);
+          if (!ec)
             {
-              // found file with same hash within project directory
-              storage_->asset_hashes.push_back ({ hexhash, relpath });
-              *hexhashp = hexhash;
-              return Error::NONE;
+              const Error error = copy_project_files (entry, target, false);
+              if (!!error)
+                return error;
             }
         }
-      // add counter to create unique name
-      const StringPair parts = Path::split_extension (relpath, true);
-      dest = Path::join (basedir, string_format ("%s(%u)%s", parts.first, ++i, parts.second));
+      else
+        std::filesystem::copy (entry, target, std::filesystem::copy_options::copy_symlinks, ec);
+      if (ec)
+        return ase_error_from_errno (ec.value());
     }
-  // create parent dir
-  if (!Path::mkdirs (Path::dirname (dest)))
-    return ase_error_from_errno (errno);
-  // copy into project dir
-  const bool copied = Path::copy_file (fspath, dest);
-  if (!copied)
-    return ase_error_from_errno (errno);
-  // success
-  storage_->asset_hashes.push_back ({ hexhash, relpath });
-  *hexhashp = hexhash;
   return Error::NONE;
-}
-
-String
-ProjectImpl::saved_filename ()
-{
-  return encodefs (saved_filename_);
 }
 
 Error
-ProjectImpl::load_project (const String &utf8filename)
+ProjectImpl::save_project_as (const String &utf8path)
 {
-  const String filename = decodefs (utf8filename);
-  assert_return (storage_ == nullptr, Error::OPERATION_BUSY);
-  PStorage storage (&storage_); // storage_ = &storage;
-  String fname = filename;
-  // turn /dir/.anklang.project -> /dir/
-  if (Path::basename (fname) == ".anklang.project" && is_anklang_dir (Path::dirname (fname)))
-    fname = Path::dirname (fname);
-  // turn /dir/ -> /dir/dir.anklang
-  if (Path::check (fname, "d"))
-    fname = Path::join (fname, Path::basename (Path::strip_slashes (Path::normalize (fname)))) + ".anklang";
-  // add missing '.anklang' extension
-  if (!Path::check (fname, "e"))
-    fname += ".anklang";
-  // check for readable file
-  if (!Path::check (fname, "e"))
+  if (discarded_ || !edit_)
+    return Error::INTERNAL;
+  const String dir = Path::strip_slashes (Path::normalize (Path::abspath (decodefs (utf8path))));
+  const String basename = Path::basename (dir);
+  if (basename.empty() || is_unnamed_dirname (basename))
+    return Error::INVALID_PROPERTY;
+  if (!Path::mkdirs (Path::dirname (dir)) || mkdir (dir.c_str(), 0700) != 0)
     return ase_error_from_errno (errno);
-  // try reading .anklang container
-  StorageReader rs;
-  Error error = rs.open_for_reading (fname);
-  if (!!error)
-    return error;
-  if (rs.stringread ("mimetype") != "application/x-anklang")
-    return Error::BAD_PROJECT;
-  // find project.json *inside* container
-  String jsd = rs.stringread ("project.json");
-  if (jsd.empty() && errno)
-    return Error::FORMAT_INVALID;
-  storage_->loading_file = fname;
-  storage_->anklang_dir = find_anklang_parent_dir (storage_->loading_file);
-#if 0 // unimplemented
-  String dirname = Path::dirname (fname);
-  // search in dirname or dirname/..
-  if (is_anklang_dir (dirname))
-    rs.search_dir (dirname);
-  else
+  edit_->flushState();
+  const String old_dir = project_dir_;
+  const bool naming = unnamed();
+  auto state = edit_->state;
+  if (naming)
     {
-      dirname = Path::dirname (dirname);
-      if (is_anklang_dir (dirname))
-        rs.search_dir (dirname);
+      state = state.createCopy();
+      state.setProperty (te::IDs::name, juce::String (basename), nullptr);
     }
-#endif
-  // parse project (TODO: use tracktion_engine loading)
-  // jsd contains project state from tracktion_engine (currently {})
-  saved_filename_ = storage_->loading_file;
+  const String xml = edit_xml (state);
+  struct stat old_stat = {}, new_stat = {};
+  bool moved = false;
+  // Write before moving so a failed save keeps the unnamed directory.
+  if (naming && !old_dir.empty() && stat (old_dir.c_str(), &old_stat) == 0 && stat (dir.c_str(), &new_stat) == 0 &&
+      old_stat.st_dev == new_stat.st_dev && !write_project_file (old_dir, xml))
+    moved = Path::rename (old_dir, dir);
+  Error error = Error::NONE;
+  if (!moved)
+    {
+      error = make_anklang_dir (dir) ? Error::NONE : ase_error_from_errno (errno);
+      if (!error && !old_dir.empty())
+        error = copy_project_files (old_dir, dir);
+      if (!error)
+        error = write_project_file (dir, xml);
+    }
+  if (!!error)
+    {
+      Path::rmrf (dir);
+      return error;
+    }
+  project_dir_ = dir;
+  if (naming)
+    edit_->state.setProperty (te::IDs::name, juce::String (basename), nullptr);
+  project_dir_changed();
+  edit_->resetChangedStatus();
+  if (naming && !old_dir.empty() && !moved)
+    Path::rmrf (old_dir);
   return Error::NONE;
 }
 
-StreamReaderP
-ProjectImpl::load_blob (const String &fspath)
+ProjectImplP
+ProjectImpl::from_xml (const String &xml, const String &dir)
 {
-  assert_return (storage_ != nullptr, nullptr);
-  assert_return (!storage_->loading_file.empty(), nullptr);
-  return stream_reader_zip_member (storage_->loading_file, fspath);
+  auto element = juce::parseXML (juce::String (xml));
+  if (!element)
+    return nullptr;
+  te::updateLegacyEdit (*element);
+  auto state = juce::ValueTree::fromXml (*element);
+  if (!state.hasType (te::IDs::EDIT))
+    return nullptr;
+  if (!te::ProjectItemID::fromProperty (state, te::IDs::projectID).isValid())
+    state.setProperty (te::IDs::projectID, te::ProjectItemID::createNewID (0).toString(), nullptr);
+  ProjectImplP project = ProjectImpl::make_shared (state, dir, false);
+  g_projects.push_back (project);
+  return project;
 }
 
-/// Find file from hash code, returns fspath.
-String
-ProjectImpl::loader_resolve (const String &hexhash)
+Error
+ProjectImpl::open_project (const String &utf8path)
 {
-  return_unless (storage_ && storage_->asset_hashes.size(), "");
-  return_unless (!storage_->anklang_dir.empty(), "");
-  for (const auto& [hash,relpath] : storage_->asset_hashes)
-    if (hexhash == hash)
-      return Path::join (storage_->anklang_dir, relpath);
-  return "";
+  String filename = Path::realpath (decodefs (utf8path));
+  if (errno)
+    return ase_error_from_errno (errno);
+  if (Path::check (filename, "d"))
+    filename = Path::join (filename, "project.anklang");
+  if (Path::basename (filename) != "project.anklang")
+    return Error::BAD_PROJECT;
+  const String dir = Path::dirname (filename);
+  for (const auto &project : g_projects)
+    if (!project->project_dir_.empty() && Path::equals (dir, project->project_dir_))
+      return Error::OPERATION_BUSY;
+  StorageReader reader;
+  Error error = reader.open_for_reading (filename);
+  if (!!error)
+    return error;
+  if (reader.stringread ("mimetype") != "application/x-anklang")
+    return Error::BAD_PROJECT;
+  const String xml = reader.stringread ("edit.tracktionedit");
+  if (!from_xml (xml, dir))
+    return Error::FORMAT_INVALID;
+  return Error::NONE;
 }
 
 String
@@ -934,7 +989,7 @@ ProjectImpl::length (double)
 StringS
 ProjectImpl::read_only_properties () const
 {
-  return { "all_tracks", "length" };
+  return { "all_tracks", "length", "project_dir", "unnamed" };
 }
 
 void

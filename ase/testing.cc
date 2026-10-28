@@ -208,7 +208,14 @@ random_frange (double begin, double end)
 // == TestChain ==
 static const TestChain *global_test_chain = NULL;
 
-TestChain::TestChain (std::function<void()> tfunc, const std::string &tname, Kind kind) :
+TestChain::TestChain (void (*tfunc)(), const std::string &tname, Kind kind) :
+  name_ (tname), func_ ([tfunc]() -> CoTaskVoid { tfunc(); co_return; }), next_ (global_test_chain), kind_ (kind)
+{
+  assert_return (next_ == global_test_chain);
+  global_test_chain = this;
+}
+
+TestChain::TestChain (CoTaskVoid (*tfunc)(), const std::string &tname, Kind kind) :
   name_ (tname), func_ (tfunc), next_ (global_test_chain), kind_ (kind)
 {
   assert_return (next_ == global_test_chain);
@@ -224,10 +231,10 @@ match_testname (const std::string &name, const StringS &test_names)
   return false;
 }
 
-void
+CoTaskVoid
 TestChain::run (ptrdiff_t internal_token, const StringS *test_names)
 {
-  assert_return (internal_token == ptrdiff_t (global_test_chain));
+  TASSERT (internal_token == ptrdiff_t (global_test_chain));
   std::vector<const TestChain*> tests;
   for (const TestChain *t = global_test_chain; t; t = t->next_)
     tests.push_back (t);
@@ -245,27 +252,25 @@ TestChain::run (ptrdiff_t internal_token, const StringS *test_names)
       fflush (stderr);
       printout ("  RUN…     %s\n", t->name_);
       fflush (stdout);
-      t->func_();
+      co_await t->run();
       fflush (stderr);
       printout ("  PASS     %s\n", t->name_);
       fflush (stdout);
     }
 }
 
-int
+CoTaskVoid
 run (const StringS &test_names)
 {
   IntegrityCheck::deferred_init(); // register INTEGRITY tests
-  TestChain::run (ptrdiff_t (global_test_chain), &test_names);
-  return 0;
+  co_await TestChain::run (ptrdiff_t (global_test_chain), &test_names);
 }
 
-int
+CoTaskVoid
 run (void)
 {
   IntegrityCheck::deferred_init(); // register INTEGRITY tests
-  TestChain::run (ptrdiff_t (global_test_chain), NULL);
-  return 0;
+  co_await TestChain::run (ptrdiff_t (global_test_chain), NULL);
 }
 
 TestEntries
@@ -302,7 +307,7 @@ list_tests ()
   return entries;
 }
 
-int
+CoTask<int>
 run_test (const std::string &test_identifier)
 {
   IntegrityCheck::deferred_init(); // register INTEGRITY tests
@@ -312,13 +317,13 @@ run_test (const std::string &test_identifier)
         fflush (stderr);
         printout ("  RUN…     %s\n", t->name());
         fflush (stdout);
-        t->run();
+        co_await t->run();
         fflush (stderr);
         printout ("  PASS     %s\n", t->name());
         fflush (stdout);
-        return 1; // ran and passed
+        co_return 1; // ran and passed
       }
-  return -1; // none found
+  co_return -1; // none found
 }
 
 // == IntegrityCheck ==

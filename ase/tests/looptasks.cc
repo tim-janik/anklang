@@ -63,7 +63,7 @@ loop_current_multithread_test()
 }
 TEST_ADD (loop_current_multithread_test);
 
-static void
+static Ase::CoTaskVoid
 loop_add_timer_test()
 {
   using namespace Ase;
@@ -79,9 +79,7 @@ loop_add_timer_test()
   }, interval, priority);
 
   for (int i = 0; i < 4; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
 
   TCHECK (counter == 1, "add_timer() callback should be called once");
@@ -90,7 +88,7 @@ TEST_ADD (loop_add_timer_test);
 
 // === CoTask tests ===
 
-static void
+static Ase::CoTaskVoid
 cotask_void_test()
 {
   auto loop = Ase::Loop::current();
@@ -110,15 +108,13 @@ cotask_void_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && !*completedp; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*completedp, "CoTask<void> should complete");
 }
 TEST_ADD (cotask_void_test);
 
-static void
+static Ase::CoTaskVoid
 cotask_int64_result_test()
 {
   auto loop = Ase::Loop::current();
@@ -136,15 +132,13 @@ cotask_int64_result_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && *result == 0; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*result == 42, "CoTask<int64_t> should return 42");
 }
 TEST_ADD (cotask_int64_result_test);
 
-static void
+static Ase::CoTaskVoid
 cotask_string_result_test()
 {
   auto loop = Ase::Loop::current();
@@ -161,15 +155,13 @@ cotask_string_result_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && result->empty(); i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*result == "hello", "CoTask<std::string> should return 'hello'");
 }
 TEST_ADD (cotask_string_result_test);
 
-static void
+static Ase::CoTaskVoid
 promise_void_test()
 {
   auto loop = Ase::Loop::current();
@@ -190,15 +182,13 @@ promise_void_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && !*completed; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*completed, "Promise<void> should resolve");
 }
 TEST_ADD (promise_void_test);
 
-static void
+static Ase::CoTaskVoid
 promise_int64_test()
 {
   auto loop = Ase::Loop::current();
@@ -218,15 +208,13 @@ promise_int64_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && *result == 0; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*result == 123, "Promise<int64_t> should resolve with 123");
 }
 TEST_ADD (promise_int64_test);
 
-static void
+static Ase::CoTaskVoid
 promise_string_test()
 {
   auto loop = Ase::Loop::current();
@@ -246,15 +234,13 @@ promise_string_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && result->empty(); i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*result == "world", "Promise<std::string> should resolve with 'world'");
 }
 TEST_ADD (promise_string_test);
 
-static void
+static Ase::CoTaskVoid
 promise_multi_waiter_test()
 {
   auto loop = Ase::Loop::current();
@@ -279,16 +265,14 @@ promise_multi_waiter_test()
   loop->add ([=]() { promise->resolve (99); return false; });
 
   for (int i = 0; i < 500 && (*waiter1_done == 0 || *waiter2_done == 0); i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*waiter1_done == 99, "First waiter should get 99");
   TCHECK (*waiter2_done == 99, "Second waiter should get 99");
 }
 TEST_ADD (promise_multi_waiter_test);
 
-static void
+static Ase::CoTaskVoid
 promise_exception_test()
 {
   auto loop = Ase::Loop::current();
@@ -314,9 +298,7 @@ promise_exception_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && !*caught_exception; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*caught_exception, "Promise rejection should propagate exception");
 }
@@ -332,7 +314,7 @@ inner_int64_task (Ase::LoopP loop, int64_t value)
   co_return co_await promise;
 }
 
-static void
+static Ase::CoTaskVoid
 nested_cotask_test()
 {
   auto loop = Ase::Loop::current();
@@ -350,15 +332,13 @@ nested_cotask_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && *result == 0; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*result == 40, "Nested CoTask should chain results: 10 -> 20 -> 40");
 }
 TEST_ADD (nested_cotask_test);
 
-static void
+static Ase::CoTaskVoid
 promise_already_resolved_test()
 {
   auto loop = Ase::Loop::current();
@@ -378,15 +358,13 @@ promise_already_resolved_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && *result == 0; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*result == 77, "Already-resolved promise should return value immediately");
 }
 TEST_ADD (promise_already_resolved_test);
 
-static void
+static Ase::CoTaskVoid
 delay_promise_test()
 {
   auto loop = Ase::Loop::current();
@@ -401,9 +379,7 @@ delay_promise_test()
   loop->add (coroutine);
 
   for (int i = 0; i < 500 && -1 == *elapsed_ms; i++) {
-    usleep (1000);
-    while (loop->pending())
-      loop->iterate (true);
+    co_await loop->delay (std::chrono::milliseconds (1));
   }
   TCHECK (*elapsed_ms >= 0, "delay promise should resolve");
   TCHECK (*elapsed_ms >= 50 - 1, "delay should wait at least 50ms");

@@ -175,6 +175,7 @@ anklang_cachedir_clean_stale()
 class StorageWriter::Impl {
 public:
   void *writer = nullptr;
+  void *file_stream = nullptr;
   String zipname;
   ~Impl()
   {
@@ -186,14 +187,18 @@ public:
   close()
   {
     return_unless (writer != nullptr, Error::NONE);
-    int mzerr = mz_zip_writer_close (writer);
-    const int saved_errno = errno;
-    if (mzerr != MZ_OK && !zipname.empty())
+    errno = 0;
+    const int mzerr = mz_zip_writer_close (writer);
+    int saved_errno = mzerr != MZ_OK ? (errno ? errno : EIO) : mz_stream_error (file_stream);
+    if (mz_stream_close (file_stream) != MZ_OK && !saved_errno)
+      saved_errno = errno ? errno : EIO;
+    if (saved_errno && !zipname.empty())
       unlink (zipname.c_str());
     mz_zip_writer_delete (&writer);
+    mz_stream_os_delete (&file_stream);
     writer = nullptr;
     errno = saved_errno;
-    return mzerr == MZ_OK ? Error::NONE : ase_error_from_errno (errno ? errno : EIO);
+    return saved_errno ? ase_error_from_errno (saved_errno) : Error::NONE;
   }
   Error
   remove_opened()
@@ -210,17 +215,26 @@ public:
   open_for_writing (const String &filename)
   {
     assert_return (writer == nullptr, Error::INTERNAL);
+    if (!Path::mkdirs (Path::dirname (filename)))
+      return ase_error_from_errno (errno);
     zipname = filename;
     writer = mz_zip_writer_create();
     mz_zip_writer_set_zip_cd (writer, false);
     mz_zip_writer_set_password (writer, nullptr);
     mz_zip_writer_set_compress_level (writer, MZ_COMPRESS_LEVEL_BEST); // Passed directly to zstd as level 9.
     mz_zip_writer_set_compress_method (writer, MZ_COMPRESS_METHOD_ZSTD);
-    int mzerr = mz_zip_writer_open_file (writer, zipname.c_str(), 0, false);
+    // Own the file stream so final write and close errors reach Save.
+    file_stream = mz_stream_os_create();
+    int mzerr = mz_stream_open (file_stream, zipname.c_str(), MZ_OPEN_MODE_WRITE | MZ_OPEN_MODE_CREATE);
+    if (mzerr == MZ_OK)
+      mzerr = mz_zip_writer_open (writer, file_stream, false);
     if (mzerr != MZ_OK)
       {
         const int saved_errno = errno;
         mz_zip_writer_delete (&writer);
+        if (mz_stream_is_open (file_stream) == MZ_OK)
+          mz_stream_close (file_stream);
+        mz_stream_os_delete (&file_stream);
         writer = nullptr;
         unlink (filename.c_str());
         return ase_error_from_errno (saved_errno ? saved_errno : EIO);
