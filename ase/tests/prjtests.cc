@@ -1060,6 +1060,11 @@ project_asset_references()
   TASSERT (Path::mkdirs (Path::join (dir, "1")));
   TASSERT (Path::copy_file (sample, Path::join (dir, "x.wav")));
   TASSERT (Path::copy_file (sample, Path::join (dir, "1/2")));
+  for (const String &reference : StringS { "C:\\x.wav", "\\\\host\\x.wav", "C:/x.wav", "C:x.wav", "a\\x.wav" })
+    {
+      const String file = Path::join (dir, reference);
+      TASSERT (Path::mkdirs (Path::dirname (file)) && Path::copy_file (sample, file));
+    }
   auto project = project_with_assets (references, dir);
   StringS expected = references;
   std::sort (expected.begin(), expected.end());
