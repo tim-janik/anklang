@@ -1,6 +1,15 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+#include "trkn/tracktion.hh"
+#include "project.hh"
+#include "main.hh"
+#include "path.hh"
+#include "strings.hh"
+#include "unicode.hh"
+#include "internal.hh"
+#include <unistd.h>
+#include <set>
 
-/* Asset resolution requirements. Implementation is pending.
+/* Asset resolution requirements.
  *
  * Project ownership, location and lifetime
  * - Each project needs its own on-disk directory for state and working files.
@@ -82,3 +91,138 @@
  *   independently open arbitrary filenames found in imported state.
  *
  */
+
+namespace te = tracktion::engine;
+namespace Ase {
+
+static Preference sample_dirs_pref ({
+  .ident = "anklang-sample-dirs", .label = _("Sample Directories"), .initial = "", .hints = STANDARD,
+});
+
+static StringS
+asset_roots()
+{
+  StringS roots { anklang_runpath (RPath::SAMPLEDIR) };
+  for (const String &list : StringS { getenv ("ANKLANG_SAMPLE_DIRS") ?: "", decodefs (sample_dirs_pref.gets()),
+                                    getenv ("SFZ_PATH") ?: "", getenv ("SF2_PATH") ?: "" })
+    for (const String &root : Path::searchpath_split (list))
+      if (!root.empty())
+        roots.push_back (Path::abspath (Path::expand_tilde (root)));
+  return roots;
+}
+
+static bool
+asset_reference_valid (const String &reference)
+{
+  if (reference.empty() || reference[0] == '/' || reference.find ('\\') != String::npos ||
+      reference.find ('\0') != String::npos ||
+      (reference.size() >= 2 && reference[1] == ':' &&
+       ((reference[0] >= 'A' && reference[0] <= 'Z') || (reference[0] >= 'a' && reference[0] <= 'z'))))
+    return false;
+  for (const String &component : string_split (reference, "/"))
+    if (component == "..")
+      return false;
+  return !te::ProjectItemID (juce::String (reference)).isValid();
+}
+
+String
+ProjectImpl::resolve_asset (const String &reference) const
+{
+  return_unless (asset_reference_valid (reference), "");
+  if (!project_dir_.empty())
+    {
+      const String file = Path::join (project_dir_, reference);
+      if (Path::check (file, "fr"))
+        return file;
+    }
+  for (const String &root : asset_roots())
+    {
+      const String file = Path::join (root, reference);
+      if (Path::check (file, "fr") && Path::dircontains (root, file))
+        return file;
+    }
+  return "";
+}
+
+String
+ProjectImpl::admit_asset (const String &file, bool &created)
+{
+  created = false;
+  String relative;
+  auto reference_in = [&] (const String &root) {
+    return !root.empty() && Path::dircontains (root, file, &relative) && asset_reference_valid (relative) &&
+           juce::CharPointer_UTF8::isValidString (file.c_str(), file.size()) &&
+           Path::equals (resolve_asset (relative), file);
+  };
+  if (reference_in (project_dir_))
+    return relative;
+  for (const String &root : asset_roots())
+    if (reference_in (root))
+      return relative;
+  const String dir = project_dir (true);
+  return_unless (!dir.empty(), "");
+  const String samples = Path::join (dir, "samples");
+  String name = encodefs (Path::basename (file));
+  std::replace (name.begin(), name.end(), '\\', '_');
+  const StringPair parts = Path::split_extension (name, true);
+  if (Path::mkdirs (samples))
+    for (uint i = 0; ; i++)
+      {
+        const String reference = Path::join ("samples", i ? string_format ("%s(%u)%s", parts.first, i, parts.second) : name);
+        const String link = Path::join (dir, reference);
+        if (Path::equals (link, file))
+          return reference;
+        if (symlink (file.c_str(), link.c_str()) == 0)
+          {
+            created = true;
+            return reference;
+          }
+        if (errno != EEXIST)
+          break;
+      }
+  warning ("Project: failed to link %s: %s", file, strerror (errno));
+  return "";
+}
+
+StringS
+ProjectImpl::unresolved_assets () const
+{
+  std::set<String> unresolved;
+  if (edit_)
+    edit_->clipCache.visitItems ([&] (te::Clip *clip) {
+      const String reference = clip->getSourceFileReference().source.get().toStdString();
+      if (!reference.empty() && resolve_asset (reference).empty())
+        unresolved.insert (reference);
+    });
+  return { unresolved.begin(), unresolved.end() };
+}
+
+void
+ProjectImpl::unresolved_assets (const StringS&)
+{
+  warning ("Project.unresolved_assets is read-only");
+}
+
+Error
+ProjectImpl::replace_asset (const String &reference, const String &utf8filename)
+{
+  return_unless (edit_ && !reference.empty(), Error::INVALID_PROPERTY);
+  std::vector<te::Clip*> clips;
+  edit_->clipCache.visitItems ([&] (te::Clip *clip) {
+    if (clip->getSourceFileReference().source.get().toStdString() == reference)
+      clips.push_back (clip);
+  });
+  return_unless (!clips.empty(), Error::INVALID_PROPERTY);
+  const String file = Path::realpath (Path::abspath (decodefs (utf8filename)));
+  return_unless (!utf8filename.empty() && Path::check (file, "fr"), Error::FILE_NOT_FOUND);
+  CoalesceNotifies coalesce_notifies;
+  auto undo_scope = this->undo_scope (_("Replace Asset"));
+  bool created = false;
+  const String replacement = admit_asset (file, created);
+  return_unless (!replacement.empty(), Error::FILE_WRITE_FAILED);
+  for (auto clip : clips)
+    clip->getSourceFileReference().source = juce::String (replacement);
+  return Error::NONE;
+}
+
+} // Ase

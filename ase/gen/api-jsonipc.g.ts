@@ -932,6 +932,12 @@ export class Project // Ase::Project
   { this.$set ("unnamed", v); }
   remove_project_dir (): Promise<Error>
   { return this.$rpc ("remove_project_dir", [this]); }
+  get unresolved_assets (): string[]
+  { return this.$get ("unresolved_assets", []) as string[]; }
+  set unresolved_assets (v: string[])
+  { this.$set ("unresolved_assets", v); }
+  replace_asset (arg1: string, arg2: string): Promise<Error>
+  { return this.$rpc ("replace_asset", [this, arg1, arg2]); }
   telemetry (): Promise<TelemetryField[]>
   { return this.$rpc ("telemetry", [this]); }
   group_undo (arg1: string): Promise<void>

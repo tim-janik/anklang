@@ -221,7 +221,7 @@ bool
 dircontains (const String &dirpath, const String &descendant, String *relpath)
 {
   String child = realpath (descendant);
-  String dir = realpath (dirpath) + ASE_DIRSEP;
+  String dir = dir_terminate (realpath (dirpath));
   if (0 == child.compare (0, dir.size(), dir))
     {
       if (relpath)

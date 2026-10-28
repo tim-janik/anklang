@@ -547,8 +547,9 @@ TrackImpl::insert_wave_clip (const String &name, const String &utf8filename, dou
       return nullptr;
     }
   bool linked = false;
-  const String link = project_->link_sample (file, linked);
-  return_unless (!link.empty(), nullptr);
+  const String reference = project_->admit_asset (file, linked);
+  return_unless (!reference.empty(), nullptr);
+  const String link = project_->resolve_asset (reference);
   te::AudioFile audiofile (at->edit.engine, juce::File (link));
   if (linked)
     at->edit.engine.getAudioFileManager().forceFileUpdate (audiofile);
@@ -561,7 +562,10 @@ TrackImpl::insert_wave_clip (const String &name, const String &utf8filename, dou
     }
   const te::ClipPosition position = { { tracktion::TimePosition::fromSeconds (start),
                                         tracktion::TimeDuration::fromSeconds (audiofile.getLength()) }, {} };
-  auto clip = at->insertWaveClip (juce::String (name), juce::File (link), position, false);
+  auto undo_scope = project_->undo_scope (_("Insert Audio Clip"));
+  auto clip = at->insertNewClip (te::TrackItem::Type::wave, juce::String (name), position, nullptr);
+  if (clip)
+    clip->getSourceFileReference().source = juce::String (reference);
   if (!clip && linked)
     unlink (link.c_str());
   return clip ? ClipImpl::from_trkn (*clip) : nullptr;

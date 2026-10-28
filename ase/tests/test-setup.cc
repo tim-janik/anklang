@@ -7,6 +7,7 @@
 #include <ase/testing.hh>
 #include <ase/path.hh>
 #include <ase/platform.hh>
+#include <ase/storage.hh>
 
 namespace Ase {
 
@@ -66,7 +67,8 @@ test_project_directory_audio()
   namespace te = tracktion::engine;
   ProjectImplP project = ProjectImpl::create ("");
   TrackP track = project->create_track();
-  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  const String root = anklang_cachedir_create(), sample = Path::join (root, "piano.ogg");
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), sample));
   ClipP clip = track->insert_wave_clip ("Linked Piano", sample, 0);
   TASSERT (clip && project->unnamed());
   const String old_dir = project->project_dir();
@@ -150,6 +152,7 @@ test_project_directory_audio()
   TASSERT (!project->remove_project_dir() && !project->is_playing());
   TASSERT (wave->getAudioFile().getFile() == juce::File());
   project->discard();
+  anklang_cachedir_cleanup (root);
 }
 TEST_ADD (test_project_directory_audio);
 

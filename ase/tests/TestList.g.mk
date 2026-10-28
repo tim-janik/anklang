@@ -42,6 +42,9 @@ ASE_TEST_LIST := \
   path_tests \
   plugin_creation \
   plugin_name \
+  project_asset_libraries \
+  project_asset_reappears \
+  project_asset_references \
   project_creation \
   project_dir_clip_files \
   project_directory_audio_playback \
@@ -57,6 +60,7 @@ ASE_TEST_LIST := \
   project_name_notifications \
   project_open_errors \
   project_playback_state \
+  project_replace_asset \
   project_save_as \
   project_save_backups \
   project_save_close_errors \

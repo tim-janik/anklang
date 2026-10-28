@@ -352,6 +352,9 @@ public:
   virtual bool            unnamed        () const = 0; ///< Whether saving requires a project name.
   virtual void            unnamed        (bool) = 0;   ///< Read-only, assignments warn.
   virtual Error           remove_project_dir () = 0;   ///< Explicitly remove the project's persistent files.
+  virtual StringS         unresolved_assets () const = 0; ///< Asset references whose files cannot be found.
+  virtual void            unresolved_assets (const StringS&) = 0; ///< Read-only, assignments warn.
+  virtual Error           replace_asset  (const String &reference, const String &utf8filename) = 0; ///< Replace all clips using a reference, in one undo step.
   virtual TelemetryFieldS telemetry      () const = 0; ///< Retrieve project telemetry locations.
   virtual void            group_undo     (const String &undoname) = 0; ///< Merge upcoming undo steps.
   virtual void            ungroup_undo   () = 0;                       ///< Stop merging undo steps.
