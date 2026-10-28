@@ -43,7 +43,8 @@ public:
   write_signal (const String &file)
   {
     juce::AudioBuffer<float> signal (1, 5 * audio_rate);
-    std::fill_n (signal.getWritePointer (0), signal.getNumSamples(), 0.25f);
+    for (int i = 0; i < signal.getNumSamples(); i++)
+      signal.setSample (0, i, i % 16 < 8 ? 1.0f : -1.0f);
     juce::WavAudioFormat format;
     std::unique_ptr<juce::AudioFormatWriter> writer (format.createWriterFor (new juce::FileOutputStream (juce::File (file)),
                                                                            audio_rate, 1, 16, {}, 0));
@@ -64,7 +65,13 @@ public:
       {
         co_await main_loop->delay (audio_interval);
         TASSERT (project->is_playing());
-        TCMP (next_block(), >, 0.01f);
+        TCMP (next_block(), >, 0.25f);
+        for (int channel = 0; channel < buffer_.getNumChannels(); channel++)
+          {
+            const auto range = buffer_.findMinMax (channel, 0, audio_block);
+            TCMP (range.getStart(), <, -0.25f);
+            TCMP (range.getEnd(), >, 0.25f);
+          }
       }
   }
 };
@@ -86,12 +93,12 @@ project_directory_audio_playback()
   project->start_playback();
   auto playing = project->on_event ("notify:is_playing", [&] (const Event&) { TASSERT (project->is_playing()); });
   float level = 0;
-  for (int i = 0; i < 100 && level <= 0.01f; i++)
+  for (int i = 0; i < 100 && level <= 0.25f; i++)
     {
       level = audio.next_block();
       co_await main_loop->delay (audio_interval);
     }
-  TCMP (level, >, 0.01f);
+  TCMP (level, >, 0.25f);
   co_await audio.expect_sound (project, 16);
 
   TASSERT (!project->save_project ("Playing Audio"));
