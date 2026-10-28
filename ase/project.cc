@@ -760,11 +760,12 @@ static Error
 copy_project_files (const String &src, const String &dest)
 {
   StringS entries;
-  Path::glob (Path::join (Path::glob_escape (src), "*"), entries);
+  for (const char *pattern : { "*", ".[!.]*", "..?*" })
+    Path::glob (Path::join (Path::glob_escape (src), pattern), entries);
   for (const String &entry : entries)
     {
       const String name = Path::basename (entry);
-      if (name == "project.anklang" || name == "backup")
+      if (name == ".anklang.project" || name == "project.anklang" || name == "backup")
         continue;
       std::error_code ec;
       std::filesystem::copy (entry, Path::join (dest, name),

@@ -315,7 +315,8 @@ project_save_as()
   ProjectFiles files;
   ProjectP project = Server::instance().create_project ("");
   const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
-  ClipP clip = project->create_track()->insert_wave_clip ("Linked Piano", sample, 0);
+  TrackP track = project->create_track();
+  ClipP clip = track->insert_wave_clip ("Linked Piano", sample, 0);
   TASSERT (clip && project->unnamed());
   const String unnamed_dir = project->project_dir(), copy = Path::join (files.root, "elsewhere", "Copy");
   TASSERT (project->save_project_as (Path::join (files.root, "Unnamed-7")) == Error::INVALID_PROPERTY);
@@ -325,10 +326,20 @@ project_save_as()
   TASSERT (!Path::check (unnamed_dir, "e"));
   TASSERT (clip->original_file() == Path::join (copy, "samples", Path::basename (sample)));
   TASSERT (Path::equals (clip->original_file(), sample));
+  const String hidden_sample = Path::join (copy, ".media", "take.ogg");
+  TASSERT (Path::mkdirs (Path::dirname (hidden_sample)) && Path::copy_file (sample, hidden_sample));
+  ClipP hidden = track->insert_wave_clip ("Hidden", hidden_sample, 1);
+  TASSERT (hidden && hidden->original_file() == hidden_sample);
+  for (const String &name : { ".settings", "..settings" })
+    TASSERT (Path::stringwrite (Path::join (copy, name), "hidden data"));
   TASSERT (!project->save_project ("Ignored") && Path::check (Path::join (copy, "backup"), "d"));
   const String second = Path::join (files.root, "Second");
   TASSERT (!project->save_project_as (second));
   TASSERT (project->name() == "Copy" && project->project_dir() == second);
+  TASSERT (hidden->original_file() == Path::join (second, ".media", "take.ogg"));
+  TASSERT (Path::stringread (hidden->original_file()) == Path::stringread (sample));
+  for (const String &name : { ".settings", "..settings" })
+    TASSERT (Path::stringread (Path::join (second, name)) == "hidden data");
   TASSERT (!Path::check (Path::join (second, "backup"), "e") && Path::check (Path::join (copy, "project.anklang"), "f"));
   TASSERT (project->save_project_as (copy) == Error::FILE_EXISTS && project->project_dir() == second);
   const size_t ntracks = project->all_tracks().size();
