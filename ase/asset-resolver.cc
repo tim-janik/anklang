@@ -232,6 +232,8 @@ ProjectImpl::replace_asset (const String &reference, const String &utf8filename)
     }
   for (auto clip : clips)
     clip->getSourceFileReference().source = juce::String (replacement);
+  if (replacement == reference)
+    asset_paths_changed();
   return Error::NONE;
 }
 

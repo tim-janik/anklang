@@ -63,6 +63,7 @@ ASE_TEST_LIST := \
   project_playback_state \
   project_replace_asset \
   project_replace_asset_invalid_file \
+  project_replace_asset_same_reference \
   project_save_as \
   project_save_backups \
   project_save_close_errors \
