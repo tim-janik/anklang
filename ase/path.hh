@@ -38,6 +38,8 @@ bool         isabs               (const String &path);
 bool         isroot              (const String &path, bool dos_drives = ASE_DOS_PATHS);
 bool         isdirname           (const String &path);
 bool         dircontains         (const String &dirpath, const String &descendant, String *relpath = nullptr);
+bool         isportable_relpath  (const String &path);
+String       find_contained      (const StringS &roots, const String &relpath);
 bool         mkdirs              (const String &dirpath, uint mode = 0750);
 void         rmrf                (const String &dir);
 bool         copy_file           (const String &src, const String &dest);
