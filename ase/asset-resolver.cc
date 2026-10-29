@@ -106,23 +106,15 @@ asset_roots()
   for (const String &list : StringS { getenv ("ANKLANG_SAMPLE_DIRS") ?: "", decodefs (sample_dirs_pref.gets()),
                                     getenv ("SFZ_PATH") ?: "", getenv ("SF2_PATH") ?: "" })
     for (const String &root : Path::searchpath_split (list))
-      if (!root.empty())
-        roots.push_back (Path::abspath (Path::expand_tilde (root)));
+      if (const String dir = Path::expand_tilde (root); Path::isabs (dir))
+        roots.push_back (dir);
   return roots;
 }
 
 static bool
 asset_reference_valid (const String &reference)
 {
-  if (reference.empty() || reference[0] == '/' || reference.find ('\\') != String::npos ||
-      reference.find ('\0') != String::npos ||
-      (reference.size() >= 2 && reference[1] == ':' &&
-       ((reference[0] >= 'A' && reference[0] <= 'Z') || (reference[0] >= 'a' && reference[0] <= 'z'))))
-    return false;
-  for (const String &component : string_split (reference, "/"))
-    if (component == "..")
-      return false;
-  return !te::ProjectItemID (juce::String (reference)).isValid();
+  return Path::isportable_relpath (reference) && !te::ProjectItemID (juce::String (reference)).isValid();
 }
 
 String
@@ -135,13 +127,7 @@ ProjectImpl::resolve_asset (const String &reference) const
       if (Path::check (file, "fr"))
         return file;
     }
-  for (const String &root : asset_roots())
-    {
-      const String file = Path::join (root, reference);
-      if (Path::check (file, "fr") && Path::dircontains (root, file))
-        return file;
-    }
-  return "";
+  return Path::find_contained (asset_roots(), reference);
 }
 
 String

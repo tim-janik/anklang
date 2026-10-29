@@ -1197,6 +1197,16 @@ project_asset_libraries()
     TASSERT (asset_clips (from_root)[0]->original_file() == factory);
     from_root->discard();
   }
+  {
+    // up/.. is real/ for the kernel, but root/ as text
+    const String real = Path::join (root, "real"), up = Path::join (root, "up");
+    TASSERT (Path::mkdirs (Path::join (real, "nested")) && Path::copy_file (factory, Path::join (real, "dotdot.ogg")));
+    TASSERT (symlink (Path::join (real, "nested").c_str(), up.c_str()) == 0);
+    TestEnvironment dotdot ("ANKLANG_SAMPLE_DIRS", Path::join (up, ".."));
+    auto from_dotdot = project_with_assets ({ "dotdot.ogg" });
+    TCMP (asset_clips (from_dotdot)[0]->original_file(), ==, Path::realpath (Path::join (real, "dotdot.ogg")));
+    from_dotdot->discard();
+  }
   const String chosen = Path::join (second, "clash.ogg");
   TASSERT (Path::copy_file (factory, chosen) && Path::copy_file (factory, Path::join (first, "clash.ogg")));
   auto clash = track->insert_wave_clip ("Picked", chosen, 0);
