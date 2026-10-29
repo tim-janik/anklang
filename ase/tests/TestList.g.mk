@@ -39,6 +39,7 @@ ASE_TEST_LIST := \
   mpmc_stack_test \
   name_undo_redo \
   nested_cotask_test \
+  path_find_contained \
   path_tests \
   plugin_creation \
   plugin_name \

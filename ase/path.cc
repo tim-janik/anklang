@@ -88,7 +88,7 @@ normalize (const String &path)
   return Fs::path (path).lexically_normal();
 }
 
-/// Resolve links and directory references in @a path and provide a canonicalized absolute pathname.
+/// Resolve links and directory references in @a path and provide a canonicalized absolute pathname, "" and errno on errors.
 String
 realpath (const String &path)
 {
@@ -100,8 +100,7 @@ realpath (const String &path)
       errno = 0;
       return result;
     }
-  // error case
-  return path;
+  return "";
 }
 
 /// Append trailing slash to `path`, unless it's present.
@@ -220,8 +219,9 @@ mkdirs (const String &dirpath, uint mode)
 bool
 dircontains (const String &dirpath, const String &descendant, String *relpath)
 {
-  String child = realpath (descendant);
-  String dir = realpath (dirpath) + ASE_DIRSEP;
+  const String child = realpath (descendant), real = realpath (dirpath);
+  return_unless (!child.empty() && !real.empty(), false);
+  const String dir = dir_terminate (real);
   if (0 == child.compare (0, dir.size(), dir))
     {
       if (relpath)
@@ -229,6 +229,33 @@ dircontains (const String &dirpath, const String &descendant, String *relpath)
       return true;
     }
   return false;
+}
+
+/// Check if `path` is relative on every platform: no root, drive, backslash, NUL or ".." component.
+bool
+isportable_relpath (const String &path)
+{
+  if (path.empty() || path[0] == '/' || path.find_first_of (String ("\\\0", 2)) != String::npos ||
+      (path.size() >= 2 && ISALPHA (path[0]) && path[1] == ':'))
+    return false;
+  for (const String &component : string_split (path, "/"))
+    if (component == "..")
+      return false;
+  return true;
+}
+
+/// Canonical path of the readable `relpath` in the first of `roots` whose real path keeps it inside, or "".
+String
+find_contained (const StringS &roots, const String &relpath)
+{
+  return_unless (isportable_relpath (relpath), "");
+  for (const String &root : roots)
+    {
+      const String file = realpath (join (root, relpath));
+      if (dircontains (root, file) && check (file, "fr"))
+        return file;
+    }
+  return "";
 }
 
 /// Recursively delete directory tree.
@@ -1171,6 +1198,7 @@ CxxPasswd::CxxPasswd (std::string username) :
 
 // == Testing ==
 #include "testing.hh"
+#include "storage.hh"
 #include "internal.hh"
 
 namespace { // Anon
@@ -1284,6 +1312,41 @@ path_tests()
   TCMP (Path::skip_root ("//foo/."), ==, "foo/.");
   TCMP (Path::skip_root ("C:/foo/."), ==, "C:/foo/.");
 #endif
+  TCMP (Path::realpath ("/"), ==, "/");
+  TCMP (Path::realpath ("/nonexistent-ase-path/x"), ==, "");
+  TASSERT (Path::dircontains ("/", Path::cwd()));
+  TASSERT (!Path::dircontains ("/nonexistent-ase-path", Path::cwd()));
+  TASSERT (!Path::dircontains ("/", "/nonexistent-ase-path"));
+  for (const char *path : { "a.wav", "a/b.wav", "./a.wav", "a..b.wav", "1/2" })
+    TASSERT (Path::isportable_relpath (path));
+  for (const char *path : { "", "/a.wav", "..", "../a.wav", "a/..", "a/../b.wav", "C:a.wav", "C:/a.wav", "a\\b.wav", "\\\\host\\a.wav" })
+    TASSERT (!Path::isportable_relpath (path));
 }
+
+static void
+path_find_contained()
+{
+  const String root = anklang_cachedir_create(), first = Path::join (root, "first"), second = Path::join (root, "second");
+  const String outside = Path::join (root, "outside"), up = Path::join (first, "up");
+  TASSERT (Path::mkdirs (Path::join (first, "sub")) && Path::mkdirs (second) && Path::mkdirs (Path::join (outside, "sub")));
+  for (const String &file : { Path::join (first, "x"), Path::join (second, "x"), Path::join (second, "y"), Path::join (outside, "x") })
+    TASSERT (Path::stringwrite (file, file));
+  TASSERT (symlink (Path::join (outside, "x").c_str(), Path::join (first, "escape").c_str()) == 0);
+  TASSERT (symlink (Path::join (first, "x").c_str(), Path::join (first, "inside").c_str()) == 0);
+  TASSERT (symlink (Path::join (outside, "sub").c_str(), up.c_str()) == 0);
+  const StringS roots { first, "/nonexistent-ase-path", second };
+  TCMP (Path::find_contained (roots, "x"), ==, Path::realpath (Path::join (first, "x")));
+  TCMP (Path::find_contained (roots, "y"), ==, Path::realpath (Path::join (second, "y")));
+  TCMP (Path::find_contained (roots, "inside"), ==, Path::realpath (Path::join (first, "x")));
+  TCMP (Path::find_contained (roots, "escape"), ==, "");
+  TCMP (Path::find_contained (roots, "missing"), ==, "");
+  TCMP (Path::find_contained (roots, "sub"), ==, "");
+  TCMP (Path::find_contained (roots, "../outside/x"), ==, "");
+  // up/.. is outside/ for the kernel, but first/ as text
+  TCMP (Path::find_contained ({ Path::join (up, "..") }, "x"), ==, Path::realpath (Path::join (outside, "x")));
+  TCMP (Path::find_contained ({ "/" }, Path::realpath (Path::join (second, "y")).substr (1)), ==, Path::realpath (Path::join (second, "y")));
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (path_find_contained);
 
 } // Anon
