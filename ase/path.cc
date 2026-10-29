@@ -88,7 +88,7 @@ normalize (const String &path)
   return Fs::path (path).lexically_normal();
 }
 
-/// Resolve links and directory references in @a path and provide a canonicalized absolute pathname.
+/// Resolve links and directory references in @a path and provide a canonicalized absolute pathname, "" and errno on errors.
 String
 realpath (const String &path)
 {
@@ -100,8 +100,7 @@ realpath (const String &path)
       errno = 0;
       return result;
     }
-  // error case
-  return path;
+  return "";
 }
 
 /// Append trailing slash to `path`, unless it's present.
@@ -220,8 +219,9 @@ mkdirs (const String &dirpath, uint mode)
 bool
 dircontains (const String &dirpath, const String &descendant, String *relpath)
 {
-  String child = realpath (descendant);
-  String dir = realpath (dirpath) + ASE_DIRSEP;
+  const String child = realpath (descendant), real = realpath (dirpath);
+  return_unless (!child.empty() && !real.empty(), false);
+  const String dir = dir_terminate (real);
   if (0 == child.compare (0, dir.size(), dir))
     {
       if (relpath)
@@ -1285,5 +1285,10 @@ path_tests()
   TCMP (Path::skip_root ("C:/foo/."), ==, "C:/foo/.");
 #endif
 }
+  TCMP (Path::realpath ("/"), ==, "/");
+  TCMP (Path::realpath ("/nonexistent-ase-path/x"), ==, "");
+  TASSERT (Path::dircontains ("/", Path::cwd()));
+  TASSERT (!Path::dircontains ("/nonexistent-ase-path", Path::cwd()));
+  TASSERT (!Path::dircontains ("/", "/nonexistent-ase-path"));
 
 } // Anon

@@ -543,7 +543,7 @@ TrackImpl::insert_wave_clip (const String &name, const String &utf8filename, dou
   const String file = Path::realpath (Path::abspath (decodefs (utf8filename)));
   if (utf8filename.empty() || !Path::check (file, "fr"))
     {
-      warning ("Track.insert_wave_clip: not an audio file: %s", file);
+      warning ("Track.insert_wave_clip: not an audio file: %s", utf8filename);
       return nullptr;
     }
   bool linked = false;
