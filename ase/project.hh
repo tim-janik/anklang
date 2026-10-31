@@ -87,6 +87,7 @@ public:
   String               project_dir       (bool create);
   StringS              unresolved_assets () const override;
   void                 unresolved_assets (const StringS&) override;
+  Error                replace_asset     (const String &reference, const String &utf8filename) override;
   TelemetryFieldS      telemetry         () const override;
   static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);
