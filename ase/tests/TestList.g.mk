@@ -43,6 +43,11 @@ ASE_TEST_LIST := \
   path_tests \
   plugin_creation \
   plugin_name \
+  project_asset_libraries \
+  project_asset_link_names \
+  project_asset_preferences \
+  project_asset_reappears \
+  project_asset_references \
   project_creation \
   project_dir_clip_files \
   project_directory_audio_playback \
@@ -65,6 +70,7 @@ ASE_TEST_LIST := \
   project_tempo_values \
   project_track_management \
   project_unnamed_directory \
+  project_unresolved_assets_notify \
   promise_already_resolved_test \
   promise_exception_test \
   promise_int64_test \
@@ -95,6 +101,7 @@ ASE_TEST_LIST := \
   track_hidden \
   track_insert_wave_clip \
   track_insert_wave_clip_invalid_file \
+  track_insert_wave_clip_loop_info \
   track_insert_wave_clip_symlink_project_dir \
   track_mute_solo \
   track_name \

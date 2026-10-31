@@ -1,5 +1,6 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
 #include <ase/project.hh>
+#include <ase/main.hh>
 #include <ase/clip.hh>
 #include <ase/track.hh>
 #include <ase/path.hh>
@@ -881,7 +882,9 @@ track_insert_wave_clip()
 {
   ProjectImplP project = ProjectImpl::create ("WaveClip");
   TrackP track = project->create_track();
-  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  const String tmpdir = anklang_cachedir_create(), sample = Path::join (tmpdir, "source/piano.ogg");
+  TASSERT (Path::mkdirs (Path::dirname (sample)));
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), sample));
   ClipP clip = track->insert_wave_clip ("Piano", sample, 1);
   TASSERT (clip && clip->position().time.start == 1 && clip->position().time.end > 1);
   TASSERT (project->unnamed());
@@ -893,8 +896,9 @@ track_insert_wave_clip()
   // A link to the same file is reused
   TASSERT (track->insert_wave_clip ("Again", sample, 5)->original_file() == link && links() == 1);
   // A name clash adds a counter
-  const String tmpdir = anklang_cachedir_create(), copy = Path::join (tmpdir, Path::basename (sample));
-  const String link1 = Path::join (samples, "000_Acoustic_Grand_Piano_acpiano_0(1).ogg");
+  const String copy = Path::join (tmpdir, "copy", Path::basename (sample));
+  TASSERT (Path::mkdirs (Path::dirname (copy)));
+  const String link1 = Path::join (samples, "piano(1).ogg");
   TASSERT (Path::copy_file (sample, copy));
   TASSERT (track->insert_wave_clip ("Copy", copy, 9)->original_file() == link1 && links() == 2);
   TASSERT (Path::equals (link1, copy));
@@ -928,6 +932,44 @@ track_insert_wave_clip()
   anklang_cachedir_cleanup (tmpdir);
 }
 TEST_ADD (track_insert_wave_clip);
+
+static void
+track_insert_wave_clip_loop_info()
+{
+  const String root = anklang_cachedir_create(), library = Path::join (root, "library");
+  TestEnvironment samples ("ANKLANG_SAMPLE_DIRS", library), projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "projects"));
+  TASSERT (Path::mkdirs (library));
+  // Half a second of mono PCM, with an ACID root note and four beats.
+  String wav;
+  auto u16 = [&] (uint16_t value) { wav += char (value); wav += char (value >> 8); };
+  auto u32 = [&] (uint32_t value) { u16 (value); u16 (value >> 16); };
+  constexpr uint32_t rate = 8000;
+  wav += "RIFF"; u32 (rate + 68); wav += "WAVEfmt "; u32 (16);
+  u16 (1); u16 (1); u32 (rate); u32 (rate * 2); u16 (2); u16 (16);
+  wav += "acid"; u32 (24); u32 (2); u16 (60); u16 (0); u32 (0);
+  u32 (4); u16 (4); u16 (4); u32 (0);
+  wav += "data"; u32 (rate); wav.append (rate, '\0');
+  ProjectP project = Server::instance().create_project ("Loop Metadata");
+  project->bpm (120);
+  TrackP track = project->create_track();
+  double start = 3;
+  for (const String &dir : StringS { root, library })
+    {
+      const String file = Path::join (dir, "acid-loop.wav");
+      TASSERT (Path::stringwrite (file, wav));
+      ClipP clip = track->insert_wave_clip ("Loop", file, start);
+      TASSERT (clip && Path::equals (clip->original_file(), file));
+      TCMP (clip->position().time.start, ==, start);
+      TCMP (clip->position().time.end, ==, start + 2);
+      start += 3;
+    }
+  TASSERT (project->grep_serialized ("autoTempo=\"1\"") == "autoTempo=\"1\"");
+  TASSERT (project->grep_serialized ("autoPitch=\"1\"") == "autoPitch=\"1\"");
+  TASSERT (project->grep_serialized ("<LOOPINFO[^>]*rootNote=\"60\"[^>]*") != "");
+  project->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (track_insert_wave_clip_loop_info);
 
 static void
 track_insert_wave_clip_symlink_project_dir()
@@ -978,6 +1020,315 @@ track_insert_wave_clip_invalid_file()
   anklang_cachedir_cleanup (root);
 }
 TEST_ADD (track_insert_wave_clip_invalid_file);
+
+static ProjectP
+project_with_assets (const StringS &references, const String &dir = "")
+{
+  String xml = "<EDIT><TRACK id=\"1001\" name=\"Assets\">";
+  for (size_t i = 0; i < references.size(); i++)
+    xml += string_format ("<AUDIOCLIP id=\"%zu\" name=\"Asset\" start=\"%zu\" length=\"1\" source=\"%s\"/>",
+                          2001 + i, i, references[i]);
+  xml += "</TRACK></EDIT>";
+  auto project = ProjectImpl::from_xml (xml, dir);
+  TASSERT (project);
+  return project;
+}
+
+static ClipS
+asset_clips (ProjectP project)
+{
+  for (const auto &track : project->all_tracks())
+    if (track->name() == "Assets")
+      return track->all_clips();
+  TASSERT (false);
+  return {};
+}
+
+static void
+project_unresolved_assets_notify()
+{
+  const String root = anklang_cachedir_create(), file = Path::join (root, "missing-notify.ogg");
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "projects"));
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), file));
+  ProjectP project = Server::instance().create_project ("Asset Notifications");
+  TrackP track = project->create_track();
+  track->name ("Assets");
+  TASSERT (track->insert_wave_clip ("Missing", file, 0));
+  TASSERT (unlink (file.c_str()) == 0);
+  const String reference = "samples/missing-notify.ogg";
+  TASSERT (project->unresolved_assets() == StringS { reference });
+  uint notifications = 0;
+  auto connection = project->on_event ("notify:unresolved_assets", [&] (const Event&) { notifications++; });
+  auto expect_assets = [&] (const StringS &expected) {
+    TASSERT (project->unresolved_assets() == expected);
+    TASSERT (notifications > 0);
+    notifications = 0;
+  };
+  auto check_remove = [&] (auto remove) {
+    project->ungroup_undo();
+    remove();
+    expect_assets ({});
+    project->undo();
+    expect_assets ({ reference });
+    project->redo();
+    expect_assets ({});
+    project->undo();
+    expect_assets ({ reference });
+  };
+  check_remove ([&] { asset_clips (project)[0]->remove_self(); });
+  check_remove ([&] {
+    for (const auto &track : project->all_tracks())
+      if (track->name() == "Assets")
+        {
+          track->remove_self();
+          break;
+        }
+  });
+  project->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_unresolved_assets_notify);
+
+static void
+project_asset_references()
+{
+  const String root = anklang_cachedir_create();
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "projects"));
+  const String dir = Path::join (root, "local");
+  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  TASSERT (Path::mkdirs (dir));
+  const String absolute = Path::join (root, "x.wav");
+  TASSERT (Path::copy_file (sample, absolute));
+  const StringS references { absolute, "../x.wav", "a/../x.wav", "C:\\x.wav", "\\\\host\\x.wav",
+                             "/abs/x.wav", "C:/x.wav", "C:x.wav", "a\\x.wav", "..", "a/..", "1/2", "missing.wav" };
+  TASSERT (Path::mkdirs (Path::join (dir, "a")));
+  TASSERT (Path::mkdirs (Path::join (dir, "1")));
+  TASSERT (Path::copy_file (sample, Path::join (dir, "x.wav")));
+  TASSERT (Path::copy_file (sample, Path::join (dir, "1/2")));
+  for (const String &reference : StringS { "C:\\x.wav", "\\\\host\\x.wav", "C:/x.wav", "C:x.wav", "a\\x.wav" })
+    {
+      const String file = Path::join (dir, reference);
+      TASSERT (Path::mkdirs (Path::dirname (file)) && Path::copy_file (sample, file));
+    }
+  auto project = project_with_assets (references, dir);
+  StringS expected = references;
+  std::sort (expected.begin(), expected.end());
+  TASSERT (project->unresolved_assets() == expected);
+  auto check = [&] (ProjectP p) {
+    for (const auto &clip : asset_clips (p))
+      TASSERT (clip->original_file().empty());
+    const String xml = p->grep_serialized ("[\\s\\S]*");
+    for (const String &reference : references)
+      TASSERT (xml.find ("source=\"" + reference + "\"") != String::npos);
+  };
+  check (project);
+  TASSERT (!project->save_project (""));
+  project->discard();
+  TASSERT (!Server::instance().open_project (dir));
+  auto opened = Server::instance().last_project();
+  check (opened);
+  TASSERT (opened->unresolved_assets() == expected);
+  opened->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_asset_references);
+
+static void
+project_asset_libraries()
+{
+  const String root = anklang_cachedir_create();
+  const String first = Path::join (root, "first"), second = Path::join (root, "second");
+  const String setting = Path::join (root, "setting"), sfz = Path::join (root, "sfz"), sf2 = Path::join (root, "sf2");
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "projects"));
+  TestEnvironment samples ("ANKLANG_SAMPLE_DIRS", Path::searchpath_join (first, second));
+  TestEnvironment sfz_path ("SFZ_PATH", sfz), sf2_path ("SF2_PATH", sf2);
+  auto preference = Server::instance().access_preference ("anklang-sample-dirs");
+  TASSERT (preference);
+  const Value previous = preference->value();
+  preference->value (setting);
+  const String factory_ref = "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg";
+  const String factory = anklang_runpath (RPath::SAMPLEDIR, factory_ref);
+  const StringS roots { first, second, setting, sfz, sf2 };
+  for (const String &dir : roots)
+    {
+      TASSERT (Path::mkdirs (dir));
+      TASSERT (Path::copy_file (factory, Path::join (dir, "shared.ogg")));
+      TASSERT (Path::copy_file (factory, Path::join (dir, Path::basename (dir) + ".ogg")));
+      TASSERT (Path::mkdirs (Path::dirname (Path::join (dir, factory_ref))));
+      TASSERT (Path::copy_file (factory, Path::join (dir, factory_ref)));
+    }
+  const String escape = Path::join (first, "escape.ogg"), sibling = first + "-sibling";
+  TASSERT (Path::mkdirs (sibling) && Path::copy_file (factory, Path::join (sibling, "outside.ogg")));
+  TASSERT (symlink (Path::join (sibling, "outside.ogg").c_str(), escape.c_str()) == 0);
+  TASSERT (symlink (Path::join (first, "first.ogg").c_str(), Path::join (first, "inside.ogg").c_str()) == 0);
+  auto project = project_with_assets ({ factory_ref, "shared.ogg", "escape.ogg", "inside.ogg" });
+  auto clips = asset_clips (project);
+  TCMP (clips[0]->original_file(), ==, factory);
+  TCMP (clips[1]->original_file(), ==, Path::join (first, "shared.ogg"));
+  TASSERT (clips[2]->original_file().empty() && Path::equals (clips[3]->original_file(), Path::join (first, "first.ogg")));
+  TASSERT (project->unresolved_assets() == StringS { "escape.ogg" });
+  for (const String &dir : roots)
+    {
+      TASSERT (clips[1]->original_file() == Path::join (dir, "shared.ogg"));
+      TASSERT (unlink (Path::join (dir, "shared.ogg").c_str()) == 0);
+    }
+  TASSERT (clips[1]->original_file().empty());
+  TrackP track = project->create_track();
+  TASSERT (track->insert_wave_clip ("Factory", factory, 0)->original_file() == factory);
+  for (const String &dir : roots)
+    {
+      const String reference = Path::basename (dir) + ".ogg", file = Path::join (dir, reference);
+      TASSERT (track->insert_wave_clip ("Library", file, 0)->original_file() == file);
+      TASSERT (project->grep_serialized ("source=\"" + reference + "\"") == "source=\"" + reference + "\"");
+    }
+  TASSERT (project->project_dir().empty());
+  TASSERT (!project->save_project ("Libraries"));
+  const String local = project->project_dir();
+  TASSERT (!Path::check (Path::join (local, "samples"), "e"));
+  TASSERT (Path::mkdirs (Path::dirname (Path::join (local, factory_ref))));
+  TASSERT (symlink (factory.c_str(), Path::join (local, factory_ref).c_str()) == 0);
+  TASSERT (clips[0]->original_file() == Path::join (local, factory_ref));
+  TASSERT (symlink (factory.c_str(), Path::join (local, "escape.ogg").c_str()) == 0);
+  TASSERT (Path::equals (clips[2]->original_file(), factory));
+  TASSERT (project->unresolved_assets() == StringS { "shared.ogg" });
+  {
+    TestEnvironment filesystem_root ("ANKLANG_SAMPLE_DIRS", "/");
+    auto from_root = project_with_assets ({ factory.substr (1) });
+    TASSERT (asset_clips (from_root)[0]->original_file() == factory);
+    from_root->discard();
+  }
+  {
+    // up/.. is real/ for the kernel, but root/ as text
+    const String real = Path::join (root, "real"), up = Path::join (root, "up");
+    TASSERT (Path::mkdirs (Path::join (real, "nested")) && Path::copy_file (factory, Path::join (real, "dotdot.ogg")));
+    TASSERT (symlink (Path::join (real, "nested").c_str(), up.c_str()) == 0);
+    TestEnvironment dotdot ("ANKLANG_SAMPLE_DIRS", Path::join (up, ".."));
+    auto from_dotdot = project_with_assets ({ "dotdot.ogg" });
+    TCMP (asset_clips (from_dotdot)[0]->original_file(), ==, Path::realpath (Path::join (real, "dotdot.ogg")));
+    from_dotdot->discard();
+  }
+  const String chosen = Path::join (second, "clash.ogg");
+  TASSERT (Path::copy_file (factory, chosen) && Path::copy_file (factory, Path::join (first, "clash.ogg")));
+  auto clash = track->insert_wave_clip ("Picked", chosen, 0);
+  TASSERT (clash && Path::equals (clash->original_file(), chosen));
+  project->discard();
+  preference->value (previous);
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_asset_libraries);
+
+static CoTaskVoid
+project_asset_preferences()
+{
+  const String root = anklang_cachedir_create(), first = Path::join (root, "first"), second = Path::join (root, "second");
+  TestEnvironment samples ("ANKLANG_SAMPLE_DIRS", ""), sfz ("SFZ_PATH", ""), sf2 ("SF2_PATH", "");
+  auto preference = Server::instance().access_preference ("anklang-sample-dirs");
+  TASSERT (preference);
+  const Value previous = preference->value();
+  Emittable::Connection preference_connection;
+  auto change_preference = [&] (PropertyP property, const Value &value) {
+    auto changed = main_loop->make_promise ([&] (std::function<void()> resolve) {
+      preference_connection = property->on_event ("notify:" + property->ident(), [resolve] (const Event&) { resolve(); });
+    });
+    property->value (value);
+    return changed;
+  };
+  co_await change_preference (preference, "");
+  const String reference = "pref-library.ogg";
+  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  for (const String &dir : StringS { first, second })
+    TASSERT (Path::mkdirs (dir) && Path::copy_file (sample, Path::join (dir, reference)));
+  auto project = project_with_assets ({ reference }), other = project_with_assets ({ reference });
+  auto clip = asset_clips (project)[0], other_clip = asset_clips (other)[0];
+  TASSERT (project->unresolved_assets() == StringS { reference });
+  TASSERT (other->unresolved_assets() == StringS { reference });
+  uint notifications = 0, other_notifications = 0, originals = 0;
+  auto connection = project->on_event ("notify:unresolved_assets", [&] (const Event&) { notifications++; });
+  auto other_connection = other->on_event ("notify:unresolved_assets", [&] (const Event&) { other_notifications++; });
+  auto clip_connection = clip->on_event ("notify:original_file", [&] (const Event&) { originals++; });
+  co_await change_preference (preference, first);
+  TASSERT (project->unresolved_assets().empty() && other->unresolved_assets().empty());
+  TASSERT (notifications > 0 && other_notifications > 0 && originals > 0);
+  TASSERT (clip->original_file() == Path::join (first, reference));
+  TASSERT (other_clip->original_file() == Path::join (first, reference));
+  const uint before_switch = notifications, original_before_switch = originals;
+  co_await change_preference (preference, second);
+  TASSERT (notifications > before_switch && originals > original_before_switch);
+  TASSERT (clip->original_file() == Path::join (second, reference));
+  TASSERT (other_clip->original_file() == Path::join (second, reference));
+  const uint before_unrelated = notifications;
+  auto unrelated = Server::instance().access_preference ("anklang-projects-dir");
+  TASSERT (unrelated);
+  co_await change_preference (unrelated, unrelated->value());
+  TASSERT (notifications == before_unrelated);
+  co_await change_preference (preference, "");
+  TASSERT (notifications > before_unrelated);
+  TASSERT (project->unresolved_assets() == StringS { reference });
+  TASSERT (other->unresolved_assets() == StringS { reference });
+  TASSERT (clip->original_file().empty() && other_clip->original_file().empty());
+  std::weak_ptr<Project> weak = project;
+  project->discard();
+  project.reset();
+  TASSERT (weak.expired());
+  const uint after_destroy = notifications, other_before_change = other_notifications;
+  co_await change_preference (preference, first);
+  TASSERT (notifications == after_destroy && other_notifications > other_before_change);
+  TASSERT (other->unresolved_assets().empty());
+  other->discard();
+  other.reset();
+  co_await change_preference (preference, previous);
+  preference_connection.disconnect();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_asset_preferences);
+
+static void
+project_asset_reappears()
+{
+  const String root = anklang_cachedir_create();
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", root);
+  TestEnvironment samples ("ANKLANG_SAMPLE_DIRS", Path::join (root, "library"));
+  auto project = project_with_assets ({ "returned.ogg" });
+  TASSERT (project->unresolved_assets() == StringS { "returned.ogg" });
+  TASSERT (!project->save_project ("Reappears"));
+  const String dir = project->project_dir();
+  project->discard();
+  const String file = Path::join (root, "library/returned.ogg");
+  TASSERT (Path::mkdirs (Path::dirname (file)));
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), file));
+  TASSERT (!Server::instance().open_project (dir));
+  auto opened = Server::instance().last_project();
+  TASSERT (opened->unresolved_assets().empty() && asset_clips (opened)[0]->original_file() == file);
+  TASSERT (opened->grep_serialized ("source=\"returned.ogg\"") == "source=\"returned.ogg\"");
+  opened->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_asset_reappears);
+
+static void
+project_asset_link_names()
+{
+  const String root = anklang_cachedir_create(), library = Path::join (root, "library"), outside = Path::join (root, "outside");
+  TestEnvironment projects ("ANKLANG_PROJECTS_DIR", Path::join (root, "projects")), samples ("ANKLANG_SAMPLE_DIRS", library);
+  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  TASSERT (Path::mkdirs (Path::join (library, "samples")) && Path::mkdirs (outside));
+  TASSERT (Path::copy_file (sample, Path::join (library, "samples/kept.ogg")));
+  // Clips use samples/kept.ogg through the library and samples/gone.ogg unresolved, new links must not take either name
+  auto project = project_with_assets ({ "samples/kept.ogg", "samples/gone.ogg" });
+  TrackP track = project->create_track();
+  for (const String name : { "kept", "gone" })
+    {
+      const String file = Path::join (outside, name + ".ogg");
+      TASSERT (Path::copy_file (sample, file));
+      TCMP (track->insert_wave_clip (name, file, 0)->original_file(), ==, Path::join (project->project_dir(), "samples", name + "(1).ogg"));
+    }
+  const ClipS clips = asset_clips (project);
+  TCMP (clips[0]->original_file(), ==, Path::realpath (Path::join (library, "samples/kept.ogg")));
+  TASSERT (clips[1]->original_file().empty() && project->unresolved_assets() == StringS { "samples/gone.ogg" });
+  project->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_asset_link_names);
 
 static void
 track_all_clips()
