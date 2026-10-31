@@ -14,6 +14,7 @@
 #include "devices/liquidsfz/liquidsfzplugin.hh"
 #include <filesystem>
 #include <list>
+#include <set>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -625,28 +626,32 @@ ProjectImpl::remove_project_dir ()
   return Error::NONE;
 }
 
-/// Path of `file` in the project dir, files from elsewhere get a link in `samples/`.
+/// Link `file` into `samples/` under a name that no clip uses, resolved or not, and return its reference.
 String
-ProjectImpl::link_sample (const String &file, bool &created)
+ProjectImpl::link_sample (const String &file, bool *created)
 {
-  created = false;
+  *created = false;
   const String dir = project_dir (true);
   return_unless (!dir.empty(), "");
-  String relative;
-  if (Path::dircontains (dir, file, &relative) && juce::CharPointer_UTF8::isValidString (file.c_str(), file.size()))
-    return Path::join (dir, relative);
-  const String samples = Path::join (dir, "samples"), name = encodefs (Path::basename (file));
+  std::set<String> used;
+  edit_->clipCache.visitItems ([&] (te::Clip *clip) { used.insert (clip->getSourceFileReference().source.get().toStdString()); });
+  const String samples = Path::join (dir, "samples");
+  String name = encodefs (Path::basename (file));
+  std::replace (name.begin(), name.end(), '\\', '_');
   const StringPair parts = Path::split_extension (name, true);
   if (Path::mkdirs (samples))
     for (uint i = 0; ; i++)
       {
-        const String link = Path::join (samples, i ? string_format ("%s(%u)%s", parts.first, i, parts.second) : name);
+        const String leaf = i ? string_format ("%s(%u)%s", parts.first, i, parts.second) : name;
+        const String link = Path::join (samples, leaf), reference = Path::join ("samples", leaf);
         if (Path::equals (link, file))
-          return link;
+          return reference;
+        if (used.count (reference))
+          continue;
         if (symlink (file.c_str(), link.c_str()) == 0)
           {
-            created = true;
-            return link;
+            *created = true;
+            return reference;
           }
         if (errno != EEXIST)
           break;

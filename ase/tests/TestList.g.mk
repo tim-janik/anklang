@@ -44,6 +44,7 @@ ASE_TEST_LIST := \
   plugin_creation \
   plugin_name \
   project_asset_libraries \
+  project_asset_link_names \
   project_asset_preferences \
   project_asset_reappears \
   project_asset_references \
@@ -100,6 +101,7 @@ ASE_TEST_LIST := \
   track_hidden \
   track_insert_wave_clip \
   track_insert_wave_clip_invalid_file \
+  track_insert_wave_clip_loop_info \
   track_insert_wave_clip_symlink_project_dir \
   track_mute_solo \
   track_name \

@@ -6,6 +6,7 @@
 #include "strings.hh"
 #include "unicode.hh"
 #include "internal.hh"
+#include <unistd.h>
 #include <set>
 
 /* Asset resolution requirements.
@@ -122,6 +123,42 @@ ProjectImpl::resolve_asset (const String &reference) const
         return file;
     }
   return Path::find_contained (asset_roots(), reference);
+}
+
+/// Admit the audio file `utf8filename` by its path in the project dir or a library, else through a link.
+Error
+ProjectImpl::admit_asset (const String &utf8filename, String *reference, bool *created)
+{
+  const String file = Path::realpath (Path::abspath (decodefs (utf8filename)));
+  return_unless (!utf8filename.empty() && Path::check (file, "fr"), Error::FILE_NOT_FOUND);
+  StringS roots = asset_roots();
+  roots.insert (roots.begin(), project_dir_);
+  reference->clear();
+  if (encodefs (file) == file) // other names get a link with an encoded name
+    for (const String &root : roots)
+      if (String relative; Path::dircontains (root, file, &relative) && Path::equals (resolve_asset (relative), file))
+        {
+          *reference = relative;
+          break;
+        }
+  bool linked = false;
+  if (reference->empty())
+    *reference = link_sample (file, &linked);
+  return_unless (!reference->empty(), Error::FILE_WRITE_FAILED);
+  const String resolved = resolve_asset (*reference);
+  te::AudioFile audiofile (edit_->engine, juce::File (resolved));
+  // Tracktion caches file info by path and a new link can reuse the path of a removed one, other files keep their readers
+  if (linked)
+    edit_->engine.getAudioFileManager().forceFileUpdate (audiofile);
+  if (!audiofile.isValid())
+    {
+      if (linked)
+        unlink (resolved.c_str());
+      return Error::FORMAT_INVALID;
+    }
+  if (created)
+    *created = linked;
+  return Error::NONE;
 }
 
 StringS
