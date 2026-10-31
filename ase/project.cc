@@ -14,6 +14,7 @@
 #include "devices/liquidsfz/liquidsfzplugin.hh"
 #include <filesystem>
 #include <list>
+#include <set>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -59,6 +60,7 @@ class ProjectImpl::TransportListener : juce::ChangeListener, tracktion::Transpor
   LoopID ppt = LoopID::INVALID;
   FastMemory::Block transport_block_;
   std::list<std::function<void()>> stopped_callbacks_;
+  Preference::DelCb preference_listener_;
   te::Edit *edit_ = nullptr;
 public:
   struct Position {
@@ -80,10 +82,16 @@ public:
     transport.addListener (this);       // for TransportControl::Listener
     if (edit_)
       edit_->state.addListener (this);
+    preference_listener_ = Preference::listen ([this] (const CStringS &idents) {
+      if (std::count (idents.begin(), idents.end(), "anklang-sample-dirs"))
+        project_.asset_paths_changed();
+    });
   }
   ~TransportListener() override
   {
     assert_return (this_thread_is_ase());
+    if (preference_listener_)
+      preference_listener_();
     if (edit_)
       edit_->state.removeListener (this);
     transport.removeListener (this);
@@ -94,6 +102,8 @@ public:
   valueTreePropertyChanged (juce::ValueTree &vtree, const juce::Identifier &id) override
   {
     return_unless (project_.edit_);
+    if (id == te::IDs::source)
+      project_.emit_notify ("unresolved_assets");
     if (id == tracktion_engine::IDs::name && vtree == project_.edit_->state)
       project_.emit_notify ("name");
     if (id == tracktion_engine::IDs::bpm) // vtree == edit_->tempoSequence.getTempo (0)->state
@@ -109,6 +119,8 @@ public:
   void
   valueTreeChildAdded (juce::ValueTree &parent, juce::ValueTree &child) override
   {
+    if (te::TrackList::isTrack (child) || te::Clip::isClipState (child))
+      project_.emit_notify ("unresolved_assets");
     if (parent == edit_->state && te::TrackList::isTrack (child))
       project_.emit_notify ("all_tracks");
     if (te::TrackList::isTrack (child) || te::Clip::isClipState (child) || parent.hasType (te::IDs::TEMPOSEQUENCE))
@@ -117,6 +129,8 @@ public:
   void
   valueTreeChildRemoved (juce::ValueTree &parent, juce::ValueTree &child, int) override
   {
+    if (te::TrackList::isTrack (child) || te::Clip::isClipState (child))
+      project_.emit_notify ("unresolved_assets");
     if (parent == edit_->state && te::TrackList::isTrack (child))
       project_.emit_notify ("all_tracks");
     if (te::TrackList::isTrack (child) || te::Clip::isClipState (child) || parent.hasType (te::IDs::TEMPOSEQUENCE))
@@ -322,9 +336,8 @@ ProjectImpl::ProjectImpl (const juce::ValueTree &state, const String &dir, bool 
       return dir.empty() ? juce::File() : juce::File (Path::join (dir, ".anklang.project"));
     },
     .filePathResolver = [this] (const juce::String &path) {
-      if (Path::isabs (path.toStdString()))
-        return juce::File (path);
-      return project_dir_.empty() ? juce::File() : juce::File (project_dir_).getChildFile (path);
+      const String file = resolve_asset (path.toStdString());
+      return file.empty() ? juce::File() : juce::File (file);
     },
     .numAudioTracks = new_project ? 1u : 0u,
   });
@@ -579,12 +592,20 @@ void
 ProjectImpl::project_dir_changed ()
 {
   return_unless (!!edit_);
+  asset_paths_changed();
+  emit_notify ("project_dir");
+  emit_notify ("unnamed");
+}
+
+void
+ProjectImpl::asset_paths_changed ()
+{
+  return_unless (!!edit_);
   edit_->sendSourceFileUpdate();
   for (const auto &track : all_tracks())
     for (const auto &clip : track->all_clips())
       clip->emit_notify ("original_file");
-  emit_notify ("project_dir");
-  emit_notify ("unnamed");
+  emit_notify ("unresolved_assets");
 }
 
 Error
@@ -605,28 +626,32 @@ ProjectImpl::remove_project_dir ()
   return Error::NONE;
 }
 
-/// Path of `file` in the project dir, files from elsewhere get a link in `samples/`.
+/// Reference of a link to `file` in `samples/`, never under a name that a clip uses, resolved or not.
 String
 ProjectImpl::link_sample (const String &file, bool &created)
 {
   created = false;
   const String dir = project_dir (true);
   return_unless (!dir.empty(), "");
-  String relative;
-  if (Path::dircontains (dir, file, &relative) && juce::CharPointer_UTF8::isValidString (file.c_str(), file.size()))
-    return Path::join (dir, relative);
-  const String samples = Path::join (dir, "samples"), name = encodefs (Path::basename (file));
+  std::set<String> used;
+  edit_->clipCache.visitItems ([&] (te::Clip *clip) { used.insert (clip->getSourceFileReference().source.get().toStdString()); });
+  const String samples = Path::join (dir, "samples");
+  String name = encodefs (Path::basename (file));
+  std::replace (name.begin(), name.end(), '\\', '_');
   const StringPair parts = Path::split_extension (name, true);
   if (Path::mkdirs (samples))
     for (uint i = 0; ; i++)
       {
-        const String link = Path::join (samples, i ? string_format ("%s(%u)%s", parts.first, i, parts.second) : name);
+        const String leaf = i ? string_format ("%s(%u)%s", parts.first, i, parts.second) : name;
+        const String link = Path::join (samples, leaf), reference = Path::join ("samples", leaf);
         if (Path::equals (link, file))
-          return link;
+          return reference;
+        if (used.count (reference))
+          continue;
         if (symlink (file.c_str(), link.c_str()) == 0)
           {
             created = true;
-            return link;
+            return reference;
           }
         if (errno != EEXIST)
           break;
@@ -989,7 +1014,7 @@ ProjectImpl::length (double)
 StringS
 ProjectImpl::read_only_properties () const
 {
-  return { "all_tracks", "length", "project_dir", "unnamed" };
+  return { "all_tracks", "length", "project_dir", "unnamed", "unresolved_assets" };
 }
 
 void

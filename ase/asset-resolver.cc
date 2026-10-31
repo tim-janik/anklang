@@ -1,6 +1,15 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+#include "trkn/tracktion.hh"
+#include "project.hh"
+#include "main.hh"
+#include "path.hh"
+#include "strings.hh"
+#include "unicode.hh"
+#include "internal.hh"
+#include <unistd.h>
+#include <set>
 
-/* Asset resolution requirements. Implementation is pending.
+/* Asset resolution requirements.
  *
  * Project ownership, location and lifetime
  * - Each project needs its own on-disk directory for state and working files.
@@ -82,3 +91,115 @@
  *   independently open arbitrary filenames found in imported state.
  *
  */
+
+namespace te = tracktion::engine;
+namespace Ase {
+
+static Preference sample_dirs_pref ({
+  .ident = "anklang-sample-dirs", .label = _("Sample Directories"), .initial = "", .hints = STANDARD,
+});
+
+static StringS
+asset_roots()
+{
+  StringS roots { anklang_runpath (RPath::SAMPLEDIR) };
+  for (const String &list : StringS { getenv ("ANKLANG_SAMPLE_DIRS") ?: "", decodefs (sample_dirs_pref.gets()),
+                                    getenv ("SFZ_PATH") ?: "", getenv ("SF2_PATH") ?: "" })
+    for (const String &root : Path::searchpath_split (list))
+      if (const String dir = Path::expand_tilde (root); Path::isabs (dir))
+        roots.push_back (dir);
+  return roots;
+}
+
+String
+ProjectImpl::resolve_asset (const String &reference) const
+{
+  // Tracktion reads project item IDs without the resolver, they never resolve without Tracktion projects
+  return_unless (Path::isportable_relpath (reference) && !te::ProjectItemID (juce::String (reference)).isValid(), "");
+  if (!project_dir_.empty())
+    {
+      const String file = Path::join (project_dir_, reference);
+      if (Path::check (file, "fr"))
+        return file;
+    }
+  return Path::find_contained (asset_roots(), reference);
+}
+
+/// Admit the audio file `utf8filename` by its path in the project dir or a library, else through a link.
+Error
+ProjectImpl::admit_asset (const String &utf8filename, String &reference, bool *created)
+{
+  const String file = Path::realpath (Path::abspath (decodefs (utf8filename)));
+  return_unless (!utf8filename.empty() && Path::check (file, "fr"), Error::FILE_NOT_FOUND);
+  StringS roots = asset_roots();
+  roots.insert (roots.begin(), project_dir_);
+  reference.clear();
+  if (juce::CharPointer_UTF8::isValidString (file.c_str(), file.size())) // other names get a link with an encoded name
+    for (const String &root : roots)
+      if (String relative; Path::dircontains (root, file, &relative) && Path::equals (resolve_asset (relative), file))
+        {
+          reference = relative;
+          break;
+        }
+  bool linked = false;
+  if (reference.empty())
+    reference = link_sample (file, linked);
+  return_unless (!reference.empty(), Error::FILE_WRITE_FAILED);
+  const String resolved = resolve_asset (reference);
+  te::AudioFile audiofile (edit_->engine, juce::File (resolved));
+  if (linked)
+    edit_->engine.getAudioFileManager().forceFileUpdate (audiofile);
+  if (!audiofile.isValid())
+    {
+      if (linked)
+        unlink (resolved.c_str());
+      return Error::FORMAT_INVALID;
+    }
+  if (created)
+    *created = linked;
+  return Error::NONE;
+}
+
+StringS
+ProjectImpl::unresolved_assets () const
+{
+  std::set<String> unresolved;
+  if (edit_)
+    edit_->clipCache.visitItems ([&] (te::Clip *clip) {
+      const String reference = clip->getSourceFileReference().source.get().toStdString();
+      if (!reference.empty() && resolve_asset (reference).empty())
+        unresolved.insert (reference);
+    });
+  return { unresolved.begin(), unresolved.end() };
+}
+
+void
+ProjectImpl::unresolved_assets (const StringS&)
+{
+  warning ("Project.unresolved_assets is read-only");
+}
+
+Error
+ProjectImpl::replace_asset (const String &reference, const String &utf8filename)
+{
+  return_unless (edit_ && !reference.empty(), Error::INVALID_PROPERTY);
+  std::vector<te::Clip*> clips;
+  edit_->clipCache.visitItems ([&] (te::Clip *clip) {
+    if (clip->getSourceFileReference().source.get().toStdString() == reference)
+      clips.push_back (clip);
+  });
+  return_unless (!clips.empty(), Error::INVALID_PROPERTY);
+  CoalesceNotifies coalesce_notifies;
+  // admit_asset() may create the project dir, Tracktion's clip refresh for it belongs in this undo step
+  auto undo_scope = this->undo_scope (_("Replace Asset"));
+  String replacement;
+  if (const Error error = admit_asset (utf8filename, replacement); !!error)
+    return error;
+  for (auto clip : clips)
+    clip->getSourceFileReference().source = juce::String (replacement);
+  if (replacement == reference) // the file is back, but the unchanged source tells Tracktion nothing
+    asset_paths_changed();
+  return Error::NONE;
+}
+
+} // Ase

@@ -7,6 +7,7 @@
 #include <ase/testing.hh>
 #include <ase/path.hh>
 #include <ase/platform.hh>
+#include <ase/storage.hh>
 
 namespace Ase {
 
@@ -16,12 +17,12 @@ load_audio_file_as_clip (tracktion::Edit &edit, const juce::File &file)
 {
   edit.ensureNumberOfAudioTracks (1);
   if (auto track = tracktion::getAudioTracks (edit)[0]) {
-    tracktion::AudioFile audioFile (edit.engine, file);
-    if (audioFile.isValid())
-      if (auto newClip =
-          track->insertWaveClip (file.getFileNameWithoutExtension(), file,
-                                 { { {}, tracktion::TimeDuration::fromSeconds (audioFile.getLength()) }, {} }, false))
-        return newClip;
+    auto clip = TrackImpl::from_trkn (*track)->insert_wave_clip (file.getFileNameWithoutExtension().toStdString(),
+                                                                 file.getFullPathName().toStdString(), 0);
+    if (clip)
+      for (auto candidate : track->getClips())
+        if (ClipImpl::from_trkn (*candidate) == clip)
+          return dynamic_cast<tracktion::WaveAudioClip*> (candidate);
   }
   return {};
 }
@@ -52,6 +53,7 @@ test_audio_sample_load()
   juce::File sampleFile (sample01);
   auto clip = load_audio_file_as_clip (*project->edit_, sampleFile);
   TASSERT (clip != nullptr);
+  TASSERT (clip->getOriginalFile() == sampleFile && clip->getAudioFile().isValid());
   loop_around_clip (*clip);
   project->edit_->getTransport().ensureContextAllocated();
 
@@ -66,7 +68,8 @@ test_project_directory_audio()
   namespace te = tracktion::engine;
   ProjectImplP project = ProjectImpl::create ("");
   TrackP track = project->create_track();
-  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  const String root = anklang_cachedir_create(), sample = Path::join (root, "piano.ogg");
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), sample));
   ClipP clip = track->insert_wave_clip ("Linked Piano", sample, 0);
   TASSERT (clip && project->unnamed());
   const String old_dir = project->project_dir();
@@ -150,6 +153,7 @@ test_project_directory_audio()
   TASSERT (!project->remove_project_dir() && !project->is_playing());
   TASSERT (wave->getAudioFile().getFile() == juce::File());
   project->discard();
+  anklang_cachedir_cleanup (root);
 }
 TEST_ADD (test_project_directory_audio);
 
