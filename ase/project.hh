@@ -87,6 +87,7 @@ public:
   Error                admit_asset       (const String &utf8filename, String &reference, bool *created = nullptr);
   StringS              unresolved_assets () const override;
   void                 unresolved_assets (const StringS&) override;
+  Error                replace_asset     (const String &reference, const String &utf8filename) override;
   TelemetryFieldS      telemetry         () const override;
   static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);

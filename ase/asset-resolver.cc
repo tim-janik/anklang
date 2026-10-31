@@ -179,4 +179,27 @@ ProjectImpl::unresolved_assets (const StringS&)
   warning ("Project.unresolved_assets is read-only");
 }
 
+Error
+ProjectImpl::replace_asset (const String &reference, const String &utf8filename)
+{
+  return_unless (edit_ && !reference.empty(), Error::INVALID_PROPERTY);
+  std::vector<te::Clip*> clips;
+  edit_->clipCache.visitItems ([&] (te::Clip *clip) {
+    if (clip->getSourceFileReference().source.get().toStdString() == reference)
+      clips.push_back (clip);
+  });
+  return_unless (!clips.empty(), Error::INVALID_PROPERTY);
+  CoalesceNotifies coalesce_notifies;
+  // admit_asset() may create the project dir, Tracktion's clip refresh for it belongs in this undo step
+  auto undo_scope = this->undo_scope (_("Replace Asset"));
+  String replacement;
+  if (const Error error = admit_asset (utf8filename, replacement); !!error)
+    return error;
+  for (auto clip : clips)
+    clip->getSourceFileReference().source = juce::String (replacement);
+  if (replacement == reference) // the file is back, but the unchanged source tells Tracktion nothing
+    asset_paths_changed();
+  return Error::NONE;
+}
+
 } // Ase
