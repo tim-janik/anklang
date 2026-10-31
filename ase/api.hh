@@ -352,6 +352,8 @@ public:
   virtual bool            unnamed        () const = 0; ///< Whether saving requires a project name.
   virtual void            unnamed        (bool) = 0;   ///< Read-only, assignments warn.
   virtual Error           remove_project_dir () = 0;   ///< Explicitly remove the project's persistent files.
+  virtual StringS         unresolved_assets () const = 0; ///< References that don't resolve, changes on `notify:unresolved_assets`.
+  virtual void            unresolved_assets (const StringS&) = 0; ///< Read-only, assignments warn.
   virtual TelemetryFieldS telemetry      () const = 0; ///< Retrieve project telemetry locations.
   virtual void            group_undo     (const String &undoname) = 0; ///< Merge upcoming undo steps.
   virtual void            ungroup_undo   () = 0;                       ///< Stop merging undo steps.

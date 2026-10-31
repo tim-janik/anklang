@@ -16,12 +16,12 @@ load_audio_file_as_clip (tracktion::Edit &edit, const juce::File &file)
 {
   edit.ensureNumberOfAudioTracks (1);
   if (auto track = tracktion::getAudioTracks (edit)[0]) {
-    tracktion::AudioFile audioFile (edit.engine, file);
-    if (audioFile.isValid())
-      if (auto newClip =
-          track->insertWaveClip (file.getFileNameWithoutExtension(), file,
-                                 { { {}, tracktion::TimeDuration::fromSeconds (audioFile.getLength()) }, {} }, false))
-        return newClip;
+    auto clip = TrackImpl::from_trkn (*track)->insert_wave_clip (file.getFileNameWithoutExtension().toStdString(),
+                                                                 file.getFullPathName().toStdString(), 0);
+    if (clip)
+      for (auto candidate : track->getClips())
+        if (ClipImpl::from_trkn (*candidate) == clip)
+          return dynamic_cast<tracktion::WaveAudioClip*> (candidate);
   }
   return {};
 }
@@ -51,7 +51,7 @@ test_audio_sample_load()
   const std::string sample01 = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
   juce::File sampleFile (sample01);
   auto clip = load_audio_file_as_clip (*project->edit_, sampleFile);
-  TASSERT (clip != nullptr);
+  TASSERT (clip != nullptr && clip->getAudioFile().isValid());
   loop_around_clip (*clip);
   project->edit_->getTransport().ensureContextAllocated();
 

@@ -1,6 +1,14 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+#include "trkn/tracktion.hh"
+#include "project.hh"
+#include "main.hh"
+#include "path.hh"
+#include "strings.hh"
+#include "unicode.hh"
+#include "internal.hh"
+#include <set>
 
-/* Asset resolution requirements. Implementation is pending.
+/* Asset resolution requirements.
  *
  * Project ownership, location and lifetime
  * - Each project needs its own on-disk directory for state and working files.
@@ -82,3 +90,57 @@
  *   independently open arbitrary filenames found in imported state.
  *
  */
+
+namespace te = tracktion::engine;
+namespace Ase {
+
+static Preference sample_dirs_pref ({
+  .ident = "anklang-sample-dirs", .label = _("Sample Directories"), .initial = "", .hints = STANDARD,
+});
+
+static StringS
+asset_roots()
+{
+  StringS roots { anklang_runpath (RPath::SAMPLEDIR) };
+  for (const String &list : StringS { getenv ("ANKLANG_SAMPLE_DIRS") ?: "", decodefs (sample_dirs_pref.gets()),
+                                    getenv ("SFZ_PATH") ?: "", getenv ("SF2_PATH") ?: "" })
+    for (const String &root : Path::searchpath_split (list))
+      if (const String dir = Path::expand_tilde (root); Path::isabs (dir))
+        roots.push_back (dir);
+  return roots;
+}
+
+String
+ProjectImpl::resolve_asset (const String &reference) const
+{
+  // Tracktion reads project item IDs without the resolver, they never resolve without Tracktion projects
+  return_unless (Path::isportable_relpath (reference) && !te::ProjectItemID (juce::String (reference)).isValid(), "");
+  if (!project_dir_.empty())
+    {
+      const String file = Path::join (project_dir_, reference);
+      if (Path::check (file, "fr"))
+        return file;
+    }
+  return Path::find_contained (asset_roots(), reference);
+}
+
+StringS
+ProjectImpl::unresolved_assets () const
+{
+  std::set<String> unresolved;
+  if (edit_)
+    edit_->clipCache.visitItems ([&] (te::Clip *clip) {
+      const String reference = clip->getSourceFileReference().source.get().toStdString();
+      if (!reference.empty() && resolve_asset (reference).empty())
+        unresolved.insert (reference);
+    });
+  return { unresolved.begin(), unresolved.end() };
+}
+
+void
+ProjectImpl::unresolved_assets (const StringS&)
+{
+  warning ("Project.unresolved_assets is read-only");
+}
+
+} // Ase
