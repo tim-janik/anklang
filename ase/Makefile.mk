@@ -308,12 +308,12 @@ $(call INSTALL_BIN_RULE, $>/lib, $(DESTDIR)$(pkgdir)/lib, $(wildcard \
 
 # == build media/Samples ==
 # See: platform.cc:SAMPLEDIR
-$>/.media.done: $(EXTERNAL_BLOBS4ANKLANG_STAMPS) $>/media/Samples/
+$>/.media.done: ase/Makefile.mk $(EXTERNAL_BLOBS4ANKLANG_STAMPS) $>/media/Samples/
 	$(QGEN)
 	$Q rm -rf $>/media/Samples/freepats-vorbis/
 	$Q mkdir -p $>/media/Samples/freepats-vorbis/Drum/ $>/media/Samples/freepats-vorbis/Tone/
-	$Q ln -s $(abspath external/freepats-vorbis/Drum/*.ogg) $>/media/Samples/freepats-vorbis/Drum/
-	$Q ln -s $(abspath external/freepats-vorbis/Tone/*.ogg) $>/media/Samples/freepats-vorbis/Tone/
+	$Q $(CP) external/freepats-vorbis/Drum/*.ogg $>/media/Samples/freepats-vorbis/Drum/
+	$Q $(CP) external/freepats-vorbis/Tone/*.ogg $>/media/Samples/freepats-vorbis/Tone/
 	$Q touch $@
 CXX_TARGETS += $>/.media.done
 
@@ -369,7 +369,7 @@ lint: lint-test-api
 # == check-ase-tests ==
 .PHONY: check-ase-tests
 define ASE_TEST_CHECK
-check-$1: $$(bin/anklang)
+check-$1: $$(bin/anklang) $$>/.media.done
 	$$(QECHO) CHECK '$1'
 	$$Q timeout -k 5s 60s $$(bin/anklang) --norc --no-devices --test '$1'
 .PHONY: check-$1
