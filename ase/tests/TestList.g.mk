@@ -92,6 +92,7 @@ ASE_TEST_LIST := \
   signalutils_tests \
   sndfile_tests \
   sortnet_tests \
+  spawn_failure_diagnostics \
   storage_links \
   storage_long_link_error \
   storage_mimetype \

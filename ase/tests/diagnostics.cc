@@ -1,5 +1,7 @@
 // This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+#include <ase/atquit.hh>
 #include <ase/testing.hh>
+#include <sys/wait.h>
 #include <unistd.h>
 
 namespace {
@@ -46,5 +48,23 @@ formatter_diagnostics()
   TASSERT (output.find ("StringFormatter: WARNING: format is nullptr: <nullptr>\n") != String::npos);
 }
 TEST_ADD (formatter_diagnostics);
+
+static void
+spawn_failure_diagnostics()
+{
+  const String program = "/nonexistent/anklang-missing-program";
+  pid_t child = 0;
+  int status = 0;
+  const String output = capture_stderr ([&] {
+    const ErrorReason error = spawn_process ({ program }, &child);
+    TASSERT (error.error == 0);
+    TASSERT (waitpid (child, &status, 0) == child);
+  });
+  TASSERT (WIFEXITED (status) && WEXITSTATUS (status) == 127);
+  const String expected = "[pid=" + std::to_string (child) + "]: fork to exec " + program +
+                          ": execvp: errno=" + std::to_string (ENOENT) + "\n";
+  TASSERT (output.find (expected) != String::npos);
+}
+TEST_ADD (spawn_failure_diagnostics);
 
 } // Anon
