@@ -21,6 +21,7 @@ ASE_TEST_LIST := \
   crawler_tests \
   delay_promise_test \
   event_list_tests \
+  formatter_diagnostics \
   is_compressed_tests \
   jsonapi_tests \
   levenshtein_tests \
