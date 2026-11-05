@@ -228,7 +228,7 @@ export function ContextMenu (props: {
 
   const close = () => {
     if (dialog_ref?.open) {
-      native_dialog_close.call(dialog_ref);
+      native_dialog_close.call (dialog_ref);
       handle_close (new Event ('close'));
     }
   };

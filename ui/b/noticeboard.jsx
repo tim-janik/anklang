@@ -68,7 +68,7 @@ Extra_css`
 }`;
 
 // == Module-level state ==
-const POPDOWN = Symbol.for('b_noticeboard_POPDOWN');
+const POPDOWN = Symbol.for ('b_noticeboard_POPDOWN');
 const REMOVE = Symbol ('b_noticeboard_REMOVE');
 const TIMEOUT = 15 * 1000; // time for note to last
 const FADING = 233;        // fade in/out in milliseconds, see app.scss

@@ -1041,7 +1041,7 @@ function deepcopy_notes (allnotes, predicate) {
 }
 
 // == PianoRoll menu actions ==
-function _(arg) { return arg; }
+function _ (arg) { return arg; }
 
 async function action_cut_notes (action, piano_roll, clip, event)
 {
