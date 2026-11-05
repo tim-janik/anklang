@@ -354,18 +354,19 @@ print_backtrace (FILE *stdio, const std::vector<void*> &frames)
         if (demangled.size()) {
           if (demangled == symb)
             demangled += "()";
-          fprintf (stdio, "#%zu%s %s in %s%s%s from %s\n", i, i < 10 ? " " : "", (U + addr + R).c_str(), (E + demangled + R).c_str(), offs[0] ? "+" : "", offs, (G + exe + R).c_str());
+          fputs (string_format ("#%zu%s %s in %s%s%s from %s\n", i, i < 10 ? " " : "", (U + addr + R).c_str(),
+                                (E + demangled + R).c_str(), offs[0] ? "+" : "", offs, (G + exe + R).c_str()).c_str(), stdio);
           indots = false;
           continue;
         }
       }
     }
     if (0) { // ugly fallback
-      fprintf (stdio, "#%zu%s %s\n", i, i < 10 ? " " : "", symbols[i]);
+      fputs (string_format ("#%zu%s %s\n", i, i < 10 ? " " : "", symbols[i]).c_str(), stdio);
       continue;
     }
     if (!indots) {
-      fprintf (stdio, "      ...\n");
+      fputs ("      ...\n", stdio);
       indots = true;
     }
   }
@@ -401,7 +402,7 @@ logging_print_backtrace (const char *func)
     const int n = backtrace (&addrs[0], addrs.size());
     addrs.resize (n);
     if (n) {
-      fprintf (stderr, "Stack Trace (most recent call first):\n");
+      fputs ("Stack Trace (most recent call first):\n", stderr);
       print_backtrace (stderr, addrs);
       fflush (stdout);
       fflush (stderr);
@@ -409,9 +410,9 @@ logging_print_backtrace (const char *func)
     }
   }
 #endif // NDEBUG
-  fprintf (stderr, "Stack Trace:\n");
-  fprintf (stderr, "#0 %p in %s\n", __builtin_return_address (0), func);
-  fprintf (stderr, "      ...\n");
+  fputs ("Stack Trace:\n", stderr);
+  fputs (string_format ("#0 %p in %s\n", __builtin_return_address (0), func).c_str(), stderr);
+  fputs ("      ...\n", stderr);
   fflush (stderr);
 }
 
