@@ -29,7 +29,7 @@ ScopedPosixLocale::posix_locale()
     if (!posix_locale)
       posix_locale = newlocale (LC_ALL_MASK, nullptr, nullptr);
     if (posix_locale == nullptr)
-      fprintf (stderr, "%s: WARNING: newlocale() returned NULL\n", __FILE__);
+      fputs (__FILE__ ": WARNING: newlocale() returned NULL\n", stderr);
     return posix_locale;
   } ();
   return cached_posix_locale;
@@ -373,10 +373,11 @@ format_error (const char *err, const char *format, size_t directive)
           crst = "\033[39m\033[22m";
         }
     }
+  std::string message = std::string (cyan) + "StringFormatter: " + cred + "WARNING:" + crst + cyel + " " + err;
   if (directive)
-    fprintf (stderr, "%sStringFormatter: %sWARNING:%s%s %s in directive %zu:%s %s\n", cyan, cred, crst, cyel, err, directive, crst, format);
-  else
-    fprintf (stderr, "%sStringFormatter: %sWARNING:%s%s %s:%s %s\n", cyan, cred, crst, cyel, err, crst, format);
+    message += " in directive " + std::to_string (directive);
+  message += std::string (":") + crst + " " + format + "\n";
+  fputs (message.c_str(), stderr);
   return format;
 }
 

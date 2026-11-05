@@ -82,7 +82,7 @@ Extra_css`
 // == JSX TEMPLATE ==
 const render_piano_roll = (t: any, actions: any[], props: { class?: string; hidden?: boolean; style?: any; ref?: (el: HTMLElement) => void }) => (
   <div ref={el => { t.root = el; props.ref?.(el); }}
-       class={['b-piano-roll', props.class].filter(Boolean).join(' ')}
+       class={['b-piano-roll', props.class].filter (Boolean).join (' ')}
        hidden={props.hidden}
        style={props.style}>
 

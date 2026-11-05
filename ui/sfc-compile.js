@@ -26,7 +26,7 @@ function find_tags (string) {
 /// Extract and process sections of an SFC file.
 function process_file (filename, config) {
   // determine output file
-  let ofile = path.join (config.odir, path.basename (filename.replace(/\.(vue|sfc)$/, '')));
+  let ofile = path.join (config.odir, path.basename (filename.replace (/\.(vue|sfc)$/, '')));
   // read input file
   const string = String (fs.readFileSync (filename));
   // determine supported tags

@@ -925,7 +925,7 @@ export function split_comma (str) {
 
 /** Properly escape test into `&amp;` and related sequences */
 export function escape_html (unsafe) {
-  return unsafe.replaceAll ('&', '&amp;').replaceAll ('<', '&lt;').replaceAll ('>', '&gt;').replaceAll ('"', '&quot;').replaceAll("'", '&#039;');
+  return unsafe.replaceAll ('&', '&amp;').replaceAll ('<', '&lt;').replaceAll ('>', '&gt;').replaceAll ('"', '&quot;').replaceAll ("'", '&#039;');
 }
 
 /** Parse hexadecimal CSS color with 3 or 6 digits into [ R, G, B ] */

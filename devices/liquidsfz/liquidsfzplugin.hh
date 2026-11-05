@@ -20,9 +20,9 @@ class LiquidSFZPlugin : public tracktion::Plugin
   LiquidSFZ::Synth  synth_;
   RTMutex           rt_mutex_;
 public:
-  juce::String getName() const override               { return TRANS("LiquidSFZ"); }
+  juce::String getName() const override               { return TRANS ("LiquidSFZ"); }
   juce::String getPluginType() override               { return xmlTypeName; }
-  juce::String getSelectableDescription() override    { return TRANS("LiquidSFZ"); }
+  juce::String getSelectableDescription() override    { return TRANS ("LiquidSFZ"); }
   bool isSynth() override                             { return true; }
   bool needsConstantBufferSize() override             { return false; }
   bool takesMidiInput() override                      { return true; }
