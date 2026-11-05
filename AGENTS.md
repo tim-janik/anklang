@@ -24,6 +24,7 @@
 - Use GNU style and snake_case wherever possible. Write casts as `int64_t (x)`, not `(int64_t) x`.
 - Use `ase/regex.hh`, not `std::regex`, and add a helper there if one is missing. Prefer `ase/path.hh` over `std::filesystem`.
 - Debug output uses `debug ("<key>", ...)`. `printout` is for deliberate output only.
+- Output parameters must be pointers, no non-const references, so the call site shows what changes.
 - Remove code that has no callers.
 
 ## Removing code

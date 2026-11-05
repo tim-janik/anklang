@@ -6,6 +6,7 @@
 #include <ase/storage.hh>
 #include <ase/testing.hh>
 #include <ase/trkn.hh>
+#include <unistd.h>
 
 namespace {
 using namespace Ase;
@@ -114,5 +115,53 @@ project_directory_audio_playback()
   anklang_cachedir_cleanup (root);
 }
 TEST_ADD (project_directory_audio_playback);
+
+static CoTaskVoid
+project_replace_asset_playback()
+{
+  AudioTestDevice audio;
+  const String root = anklang_cachedir_create(), file = Path::join (root, "repair.wav");
+  TASSERT (!root.empty());
+  audio.write_signal (file);
+  ProjectP project = Server::instance().create_project ("");
+  TrackP track = project->create_track();
+  track->name ("Asset Recovery");
+  ClipP clip = track->insert_wave_clip ("Signal", file, 0);
+  TASSERT (clip && !project->save_project ("Asset Recovery"));
+  const String dir = project->project_dir(), link = clip->original_file(), reference = "samples/repair.wav";
+  project->discard();
+  TASSERT (unlink (link.c_str()) == 0);
+  TASSERT (!Server::instance().open_project (dir));
+  project = Server::instance().last_project();
+  track.reset();
+  for (const auto &candidate : project->all_tracks())
+    if (candidate->name() == "Asset Recovery")
+      track = candidate;
+  TASSERT (track && track->all_clips().size() == 1);
+  clip = track->all_clips()[0];
+  TASSERT (clip->original_file().empty() && project->unresolved_assets() == StringS { reference });
+  uint notifications = 0, originals = 0;
+  auto connection = project->on_event ("notify:unresolved_assets", [&] (const Event&) { notifications++; });
+  auto clip_connection = clip->on_event ("notify:original_file", [&] (const Event&) { originals++; });
+  TASSERT (!project->replace_asset (reference, file));
+  // The old reference keeps its name, so the replacement gets a new link
+  TASSERT (project->unresolved_assets().empty() && clip->original_file() == Path::join (dir, "samples/repair(1).wav"));
+  co_await main_loop->delay (audio_interval);
+  project->start_playback();
+  float level = 0;
+  for (int i = 0; i < 100 && level <= 0.25f; i++)
+    {
+      level = audio.next_block();
+      co_await main_loop->delay (audio_interval);
+    }
+  TCMP (level, >, 0.25f);
+  co_await audio.expect_sound (project, 16);
+  TASSERT (notifications > 0 && originals > 0);
+  project->stop_playback();
+  TASSERT (!project->remove_project_dir());
+  project->discard();
+  anklang_cachedir_cleanup (root);
+}
+TEST_ADD (project_replace_asset_playback);
 
 } // Anon

@@ -384,6 +384,7 @@ static const std::map<String,String> exempt_methods = {
   { "Project.master_track",        "Master track handle query." },
   { "Project.save_project",        "File I/O, covered by project persistence tests." },
   { "Project.save_project_as",     "File I/O, covered by project persistence tests." },
+  { "Project.replace_asset",       "File admission and multi-clip undo, covered by project_replace_asset." },
   { "Project.remove_project_dir",   "File I/O, covered by project persistence tests." },
   { "Project.telemetry",           "Telemetry memory location query." },
   { "Project.group_undo",          "Clip setters and change_batch start their own transactions, splitting explicit undo groups." },

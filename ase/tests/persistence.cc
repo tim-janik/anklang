@@ -330,7 +330,8 @@ project_dir_clip_files()
 {
   ProjectFiles files;
   ProjectP project = Server::instance().create_project ("");
-  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  const String sample = Path::join (files.root, "piano.ogg");
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), sample));
   ClipP clip = project->create_track()->insert_wave_clip ("Linked Piano", sample, 0);
   TASSERT (clip && project->unnamed());
   const String old_dir = project->project_dir();
@@ -352,7 +353,8 @@ project_save_as()
 {
   ProjectFiles files;
   ProjectP project = Server::instance().create_project ("");
-  const String sample = anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg");
+  const String sample = Path::join (files.root, "piano.ogg");
+  TASSERT (Path::copy_file (anklang_runpath (RPath::SAMPLEDIR, "freepats-vorbis/Tone/000_Acoustic_Grand_Piano_acpiano_0.ogg"), sample));
   TrackP track = project->create_track();
   ClipP clip = track->insert_wave_clip ("Linked Piano", sample, 0);
   TASSERT (clip && project->unnamed());

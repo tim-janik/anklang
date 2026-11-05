@@ -40,6 +40,10 @@ protected:
   void                deactivate_edit ();
   String              create_project_dir (const String &basename);
   void                project_dir_changed ();
+  void                asset_paths_changed ();
+  String              resolve_asset   (const String &reference) const;
+  Error               admit_asset     (const String &utf8filename, String *reference, bool *created = nullptr);
+  String              link_sample     (const String &file, bool *created);
 public:
   void                 bpm              (double bpm) override;
   double               bpm              () const override;
@@ -81,7 +85,9 @@ public:
   void                 unnamed           (bool) override;
   Error                remove_project_dir () override;
   String               project_dir       (bool create);
-  String               link_sample       (const String &file, bool &created);
+  StringS              unresolved_assets () const override;
+  void                 unresolved_assets (const StringS&) override;
+  Error                replace_asset     (const String &reference, const String &utf8filename) override;
   TelemetryFieldS      telemetry         () const override;
   static void          force_shutdown_all ();
   static ProjectImplP  create            (const String &projectname);
